@@ -144,17 +144,17 @@ def generate_knots(times):
 ####################################################################################################################
 # Load the training protocol
 #  load the voltage data:
-volts = np.genfromtxt("./protocol-staircaseramp.csv", skip_header=1, dtype=float, delimiter=',')
+volts = np.genfromtxt("protocols/protocol-staircaseramp.csv", skip_header=1, dtype=float, delimiter=',')
 #  check when the voltage jumps
 # read the times and valued of voltage clamp
-volt_times, volts = np.genfromtxt("./protocol-staircaseramp.csv", skip_header=1, dtype=float, delimiter=',').T
+volt_times, volts = np.genfromtxt("protocols/protocol-staircaseramp.csv", skip_header=1, dtype=float, delimiter=',').T
 # interpolate with smaller time step (milliseconds)
 volts_interpolated = sp.interpolate.interp1d(volt_times, volts, kind='previous') # this is the default protocol for fitting
 del volt_times, volts
 print('Loaded voltage protocol for model fitting.')
 ####################################################################################################################
 # load the AP voltage protocol for validation
-times_ap, voltage_ap = np.genfromtxt('ap_protocol/ap.csv', delimiter=',', skip_header=1).T
+times_ap, voltage_ap = np.genfromtxt('protocols/ap.csv', delimiter=',', skip_header=1).T
 times_ap_sec = times_ap/1000  # convert to s to match the other protocol and the V function
 # if we want to use the AP protocol, we can use the following function to interpolate the voltage
 volts_interpolated_ap = sp.interpolate.interp1d(times_ap_sec, voltage_ap, kind='previous')

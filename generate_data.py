@@ -3,6 +3,7 @@
 
 from load_protocols import *
 import load_protocols
+
 # defnitions
 def hh_model(t, x, theta):
     a, r = x[:2]
