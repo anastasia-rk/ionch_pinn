@@ -3,7 +3,6 @@ import torch.nn as nn
 from time import perf_counter
 from functools import partial
 import numpy as np
-import requests
 import os
 import matplotlib.pyplot as plt
 plt.rcParams['figure.figsize'] = (20,10)
@@ -34,7 +33,7 @@ if __name__ == '__main__':
     device = pt.device("cpu")
 
     # create neural network
-    N = nn.Sequential(nn.Linear(1, 50), nn.Sigmoid(), nn.Linear(50,1, bias=False))
+    N = nn.Sequential(nn.Linear(1, 30), nn.Sigmoid(), nn.Linear(30,1, bias=False))
 
     # Initial condition
     A = 0.
@@ -58,7 +57,7 @@ if __name__ == '__main__':
     optimizer = pt.optim.LBFGS(N.parameters())
 
     # The collocation points used by Lagaris
-    x = pt.Tensor(np.linspace(0, 2, 100)[:, None])
+    x = pt.Tensor(np.linspace(0, 2, 200)[:, None])
 
 
     # Run the optimizer
@@ -73,7 +72,7 @@ if __name__ == '__main__':
         optimizer.step(closure)
 
     # compare the result to the true solution
-    xx = np.linspace(0, 2, 100)[:, None]
+    xx = np.linspace(0, 2, 200)[:, None]
     with pt.no_grad():
         yy = Psi_t(pt.Tensor(xx)).numpy()
     ## this is true solution

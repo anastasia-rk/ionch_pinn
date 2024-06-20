@@ -95,7 +95,10 @@ for i in range(15001):
     loss.backward()
     optimiser.step()
 
-    if i % 5000 == 0: 
+    if i % 5000 == 0:
+        print("List of paramerer values: ")
+        for param in pinn.parameters():
+            print(param)
         #print(u.abs().mean().item(), dudt.abs().mean().item(), d2udt2.abs().mean().item())
         u = pinn(t_test).detach()
         plt.figure(figsize=(6,2.5))
