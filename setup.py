@@ -9,13 +9,38 @@ plt.rcParams['figure.figsize'] = (20,10)
 plt.rcParams['figure.dpi'] = 400
 plt.style.use("ggplot")
 
+# define nn class for testing
+class FCN(nn.Module):
+    """
+    Defines a standard fully-connected network in PyTorch. this is a simple feedforward neural network
+    with a tanh activation function.
+
+    """
+
+    def __init__(self, N_INPUT, N_OUTPUT, N_HIDDEN, N_LAYERS):
+        super().__init__()
+        activation = nn.Sigmoid
+        self.first_layer = nn.Sequential(*[
+            nn.Linear(N_INPUT, N_HIDDEN),
+            activation()])
+        self.hidden_layers = nn.Sequential(*[
+            nn.Sequential(*[
+                nn.Linear(N_HIDDEN, N_HIDDEN),
+                activation()]) for _ in range(N_LAYERS - 1)])
+        self.output_layer = nn.Linear(N_HIDDEN, N_OUTPUT)
+
+    def forward(self, x):
+        x = self.first_layer(x)
+        x = self.hidden_layers(x)
+        x = self.output_layer(x)
+        return x
 
 def pretty_axis(ax, legendFlag=True):
     # set axis labels and grid
     ax.set_facecolor('white')
     ax.grid(which='major', color='grey', linestyle='solid', alpha=0.2, linewidth=1)
     if legendFlag:
-        ax.legend(loc='best', fontsize=12)
+        ax.legend(loc='best', fontsize=12,framealpha=0.5)
     return ax
 
 
