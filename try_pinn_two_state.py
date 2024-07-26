@@ -134,14 +134,13 @@ current_true = current_model(times, solution, thetas_true, snr=snr)
 # set up the neural network
 loss_seq = []
 pt.manual_seed(123)
-nLayers = 3
+nLayers = 2
 nHidden = 500
 nOutputs = 2
 nInputs = 1
 marks = [int(i) for i in np.linspace(0, nHidden, 3)]
 # define a neural network to train
 pinn = FCN(nInputs, nOutputs, nHidden, nLayers)
-a = list(pinn.named_parameters())[0][1]
 # storing parameters for plotting
 all_names = [name for _, (name, _) in enumerate(pinn.named_parameters())]
 # get unique layer names
@@ -150,7 +149,15 @@ last_layer_name = all_names[-1].split('.')[0]
 hidden_layer_names = [name.split('.')[0] + '.' + name.split('.')[1]  for name in all_names[2:-2]]
 # drip elements of layer list that are duplicates but preserve order - done in weird way from stackoverflow!
 layer_names = [first_layer_name] + list(dict.fromkeys(hidden_layer_names)) + [last_layer_name]
-####################################################################################################################
+# get the biases of the first layer
+biases = pinn.first_layer[0].bias.data
+# provide larger biases for the first layer as the initialsiation
+a = pt.tensor(-10)
+b = pt.tensor(10)
+biases_new = (b - a) * pt.rand_like(biases) + a
+# set the biases of the first layer
+pinn.first_layer[0].bias.data = biases_new
+########################################################################################################################
 # define the optimiser and the loss function
 optimiser = pt.optim.Adam(pinn.parameters(),lr=1e-3)
 loss = pt.tensor(100) # if we are using a while loop, we need to initialise the loss

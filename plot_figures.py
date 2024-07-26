@@ -242,7 +242,7 @@ if __name__ == '__main__':
 
 #     generate a uniform sample between -1 and 1
     scales = pt.rand(1000, 1) * 2 - 1
-    shifts = pt.rand(10000, 1) * 20 - 10
+    shifts = pt.rand(10000, 1) * 10 - 5
 
     x = pt.linspace(0, 15000, 10000)
     for i in range(1000):
