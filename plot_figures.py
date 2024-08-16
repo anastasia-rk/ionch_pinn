@@ -187,6 +187,41 @@ if __name__ == '__main__':
     domain = pt.linspace(0, end_time, nSteps).requires_grad_(True).unsqueeze(1)
     domain_scaled = pt.linspace(0, end_time*scaling_coeff, nSteps).requires_grad_(True).unsqueeze(1)
     ####################################################################################################################
+    # create the domains over which we want to make pinn
+    end_point = 10
+    time_scaling_coeff = 6000 / end_point
+    g_scaling_coeff = 100 /end_point
+    nSteps_t = 1000
+    nSteps_g = 10
+    t_domain = pt.linspace(0, end_point, nSteps_t).requires_grad_(True).unsqueeze(1)
+    t_domain_scaled = pt.linspace(0, end_point * time_scaling_coeff, nSteps_t).requires_grad_(True).unsqueeze(1)
+    g_domain = pt.linspace(0, end_point, nSteps_g).requires_grad_(True).unsqueeze(1)
+    g_domain_scaled = pt.linspace(0, end_point * g_scaling_coeff, nSteps_g).requires_grad_(True).unsqueeze(1)
+    # Try making a multi-input pinn
+    nInputs = 2
+    lenInputs = [1, 1] # this is basically to show dimension of the input, it is not the same as the size of the domain!
+    dimInputs = [nSteps_t,nSteps_g]
+    nLayers = 3
+    nHidden = 500
+    nOutputs = 3
+    # We require the PINN that will produce as an output the tensor tha corresponds to all combinations of input values
+    # for example, if we have an input of size 1000x1 and input of size 100x1, we want the output to be of size 1000x100
+    pinn_multi_input = FCN_multi_input(nInputs, lenInputs, nOutputs, nHidden, nLayers)
+    # try passing domains through the pinn as a list
+    # x_out = pinn_multi_input([t_domain_scaled, g_domain_scaled])
+    ####################################################################################################################
+    # try creating a FCN with the meshgrid of input tensors instead
+    t_domain = pt.linspace(0, end_point, nSteps_t).requires_grad_(True)
+    t_domain_scaled = pt.linspace(0, end_point * time_scaling_coeff, nSteps_t).requires_grad_(True)
+    g_domain = pt.linspace(0, end_point, nSteps_g).requires_grad_(True)
+    g_domain_scaled = pt.linspace(0, end_point * g_scaling_coeff, nSteps_g).requires_grad_(True)
+    # create the meshgrid
+    t_mesh, g_mesh = pt.meshgrid(t_domain, g_domain)
+    # stack two tensors along a new dimension
+    stacked_domain = pt.stack((t_mesh, g_mesh), dim=2)
+    pinn_for_mesh = FCN(2, 2, 500, 2)
+    x_out = pinn_for_mesh(stacked_domain)
+    ####################################################################################################################
     # plot the activation functions of the network as a function of domain
     fig, axes = plot_layers_as_bases(pinn, domain, domain)
     axes[-1].set_xlabel('Input domain at initialisation')
