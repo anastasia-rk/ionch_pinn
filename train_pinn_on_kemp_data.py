@@ -224,9 +224,17 @@ snr = 10 ** (snr_db / 10)
 current_true = current_model(times, solution, thetas_true, snr=snr)
 ####################################################################################################################
 #set up the model for the PINN training
+# create folder for figure storage
+FigFolderName = 'Figures/' + model_name.lower() + '_data'
+if not os.path.exists(FigFolderName):
+    os.makedirs(FigFolderName)
+# create the folder for data storage
+ModelFolderName = 'Models/' + model_name.lower() + '_data'
+if not os.path.exists(ModelFolderName):
+    os.makedirs(ModelFolderName)
 IsArchTest = False # if ture, this will fit the PINN output directly to true state, if false, it will fit to the RHS
 InLogScale = False # if true, the conductances will be in log scale
-rhs_name = 'hh_all_inputs_model'
+rhs_name = 'test_all_inputs_model'
 available_rhs = ['test_all_inputs_model', 'hh_all_inputs_model']
 ####################################################################################################################
 # set up the domain for the PINN
@@ -246,9 +254,15 @@ elif rhs_name.lower() == 'hh_all_inputs_model':
     # generate sample for all HH parameters within given bounds
     min_val = pt.tensor([1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-5])
     max_val = pt.tensor([1e3, 0.4, 1e3, 0.4, 1e3, 0.4, 1e3, 0.4, 10])
-    nSamples = 10 # number of parameter samples
-    nPerBatch = 2 # number of samples per batch
+    nSamples = 19 # number of parameter samples
     param_sample_unscaled = generate_parameter_sample(nSamples, len(max_val), min_val, max_val, rateConstraint=True)
+    # I want to add the true data point to the sample to see if the PINN is able to fit that even when it struggles with others
+    true_params_unscaled = pt.tensor(thetas_true).unsqueeze(-1)
+    param_sample_unscaled = pt.cat([param_sample_unscaled, true_params_unscaled], dim=-1)
+    nSamples = param_sample_unscaled.shape[-1]
+    nPerBatch = 6  # number of samples per batch
+    # if nSamples % nPerBatch != 0:
+    #     raise ValueError('The number of samples should be divisible by the number of samples per batch.')
     # plot histograms of smapled values for each parameter
     param_names = ['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8','g']
     fig, axs = plt.subplots(3, 3, figsize=(15, 15))
@@ -262,7 +276,7 @@ elif rhs_name.lower() == 'hh_all_inputs_model':
         # axs[i].set_ylabel('Frequency')
     # save the figure
     fig.tight_layout()
-    fig.savefig('Figures/'+model_name.lower()+'_parameter_histograms.png', dpi=400)
+    fig.savefig(FigFolderName + '/'+RHS_name.lower()+'_parameter_histograms.png', dpi=400)
     # set up the colour wheel for plotting output at different training samples
     colours = plt.cm.PuOr(np.linspace(0, 1, nSamples))
     # make a throwaway counntour plot to generate a heatmap of conductances
@@ -308,7 +322,7 @@ elif rhs_name.lower() == 'hh_all_inputs_model':
     # cbar.ax.yaxis.label.set_rotation(90)
     # save the figure
     # fig.tight_layout()
-    fig.savefig('Figures/'+RHS_name.lower()+'_parameter_samples.png', dpi=400)
+    fig.savefig(FigFolderName + '/'+RHS_name.lower()+'_parameter_samples.png', dpi=400)
     # plot the conductances
     fig, ax = plt.subplots(1, 1, figsize=(5.5, 5), dpi=400)
     ax.axhline(min_val[-1].detach().numpy(), linestyle='--', alpha=0.7, color='grey')
@@ -326,7 +340,7 @@ elif rhs_name.lower() == 'hh_all_inputs_model':
     ax.set_yscale('log')
     ax.set_ylabel('Conductance')
     fig.tight_layout()
-    fig.savefig('Figures/'+RHS_name.lower()+'_conductance_samples.png', dpi=400)
+    fig.savefig(FigFolderName + '/'+RHS_name.lower()+'_conductance_samples.png', dpi=400)
 
 ## combine the tensors
 ####################################################################################################################
@@ -342,21 +356,24 @@ IC_t_domain = pt.tensor([0.], dtype=pt.float32).requires_grad_(True)
 IC_stacked_domain = stack_inputs(IC_t_domain, param_sample)
 # solve the ODE and get the true state and measured current
 time_of_domain = t_domain_unscaled.detach().numpy()
-# sol_for_x = sp.integrate.solve_ivp(hh_model, [0, t_domain_unscaled[-1]], y0=IC, args=[thetas_true], dense_output=True,
-#                                    method='LSODA', rtol=1e-8, atol=1e-8)
-# IC = pt.tensor(sol_for_x.sol(time_of_domain[0]), dtype=pt.float32)  # get the IC from true state
-# state_true = sol_for_x.sol(time_of_domain)
-measured_current = current_model(time_of_domain, solution, thetas_true, snr=snr)
+sol_for_x = sp.integrate.solve_ivp(hh_model, [0, t_domain_unscaled[-1]], y0=IC, args=[thetas_true], dense_output=True,
+                                   method='LSODA', rtol=1e-8, atol=1e-8)
+IC = pt.tensor(sol_for_x.sol(time_of_domain[0]), dtype=pt.float32)  # get the IC from true state
+state_true = sol_for_x.sol(time_of_domain)
+measured_current = current_model(time_of_domain, sol_for_x, thetas_true, snr=10)
 # convert the true state and the measured current into a tensor
-# state_true_tensor = pt.tensor(state_true.transpose())
+state_true_tensor = pt.tensor(state_true.transpose())
 measured_current_tensor = pt.tensor(measured_current, dtype=pt.float32)
+# save the stacked domain into an numpy file
+np.save(ModelFolderName + '/stacked_scaled_domain_used_for_training.npy', stacked_domain.detach().numpy())
+np.save(ModelFolderName + '/stacked_unscaled_domain_used_for_training.npy', stacked_domain_unscaled.detach().numpy())
 ####################################################################################################################
 # set up the neural network
 domain_shape = stacked_domain.shape
 loss_seq = []
 pt.manual_seed(123)
-nLayers = 3
-nHidden = 700
+nLayers = 5
+nHidden = 600
 nOutputs = 2
 nInputs = domain_shape[-1]
 marks = [int(i) for i in np.linspace(0, nHidden, 3)]
@@ -383,14 +400,14 @@ biases_new = (b - a) * pt.rand_like(biases) + a
 pinn.first_layer[0].bias.data = biases_new
 ########################################################################################################################
 # define the optimiser and the loss function
-optimiser = pt.optim.Adam(pinn.parameters(),lr=1e-3)
+optimiser = pt.optim.Adam(pinn.parameters(),lr=1e-4, weight_decay=1e-4)
 # loss = pt.tensor(100) # if we are using a while loop, we need to initialise the loss
 i = 0
-lambda_ic = 1 # 1e-2 # weight on the gradient fitting cost
+lambda_ic = 1e-2 # 1e-2 # weight on the gradient fitting cost
 lambda_rhs = 1 # weight on the right hand side fitting cost
 lambda_l1 = 0 # weight on the L1 norm of the parameters
-lambda_data = 1e-5 # weight on the data fitting cost
-lambda_penalty = 1e-2 # weight on the output penalty
+lambda_data = 1e-7 # weight on the data fitting cost
+lambda_penalty = 1e-3 # weight on the output penalty
 lambdas = [lambda_ic, lambda_rhs, lambda_l1, lambda_data,lambda_penalty]
 # placeholder for storing the costs
 all_cost_names = ['IC', 'RHS', 'L1', 'Data','Penalty']
@@ -416,7 +433,15 @@ measured_current_tensor = measured_current_tensor.expand(current_shape).to(devic
 # create a tensor dataset - we must include parts of RHS parameters that are precomputed to split them into appropriate parts
 # note that precomputed_RHS_params is a tuple of tensors - we need to unpack it to send it into the dataloader
 dataset = TensorDataset(stacked_domain, *precomputed_RHS_params,  measured_current_tensor)
-dataloader = DataLoader(dataset, batch_size=nPerBatch, shuffle=False)
+# if the device we use is cpu, set num_workers to 60, if it is cuda set num_workers to 8
+num_workers = 0
+if device.type == 'cuda':
+    num_workers = 8
+elif device.type == 'cpu':
+    num_workers = min(60, os.cpu_count())
+print(f'Number of workers used:{num_workers}')
+dataloader = DataLoader(dataset, batch_size=nPerBatch, shuffle=False, num_workers=num_workers)
+# send the IC domain to device
 IC_stacked_domain = IC_stacked_domain.to(device)
 IC = IC.to(device)
 ########################################################################################################################
@@ -435,11 +460,11 @@ fig, axes = plot_pinn_params_all_inputs(pinn)
 fig.suptitle('test', fontsize=16)
 plt.subplots_adjust(left=0, right=1, wspace=0.1, hspace=1)
 # save the figure
-fig.savefig('Figures/Weights_and_biases.png', dpi=400)
+fig.savefig(FigFolderName + '/Weights_and_biases.png', dpi=400)
 ########################################################################################################################
 # loop settings
-plotEvery = 5000
-maxIter = 250001
+plotEvery = 10000
+maxIter = 500001
 rhs_error_state_weights = [1,1]
 # start the optimisation loop
 for i in tqdm(range(maxIter)):
@@ -532,14 +557,13 @@ for i in tqdm(range(maxIter)):
     ####################################################################################################################
     # occasionally plot the output, save the network state and plot the costs
     if i % plotEvery == 0:
-        # save  the model andcosts
+        # save  the model and costs
         # save the model to a pickle file
-        pt.save(pinn.state_dict(),
-                'Models/' + rhs_name.lower() + '_' + str(nLayers) + '_layers_' + str(nHidden) + '_nodes_' + str(
-                    nInputs) + '_ins' + str(nOutputs) + '_outs.pth')
+        pt.save(pinn.state_dict(), ModelFolderName + '/' + rhs_name.lower() + '_' + str(nLayers) + '_layers_' + str(
+            nHidden) + '_nodes_' + str(nInputs) + '_ins_' + str(nOutputs) + '_outs.pth')
         # save the costs to a pickle file
-        with open('Models/' + rhs_name.lower() + '_' + str(nLayers) + '_layers_' + str(nHidden) + '_nodes_' + str(
-                nInputs) + '_ins' + str(nOutputs) + '_costs.pkl', 'wb') as f:
+        with open(ModelFolderName + '/' + rhs_name.lower() + '_' + str(nLayers) + '_layers_' + str(
+                nHidden) + '_nodes_' + str(nInputs) + '_ins_' + str(nOutputs) + '_costs.pkl', 'wb') as f:
             pkl.dump(stored_costs, f)
         # plotting for different samples - we need to call the correct tenso since we have changed how the input tensors are generated
         # in order to plot over the whole interval, we need to produce output
@@ -556,7 +580,7 @@ for i in tqdm(range(maxIter)):
         # genreate 2d ndarray that starts at 0 and ends at 2*nOutputs
         axes = axes.ravel()
         for iOutput in range(nOutputs):
-            # axes[iOutput].plot(time_of_domain, state_true[iOutput,:], label="IVP solution", linewidth=1, color="k", alpha=0.3)
+            axes[iOutput].plot(time_of_domain, state_true[iOutput,:], label="IVP solution", linewidth=1, color="k", alpha=0.3)
             for iSample in range(0, nSamples):
                 axes[iOutput].plot(time_of_domain, state_domain[iSample,...,iOutput].cpu().detach().numpy(),
                                    color=colours[iSample],linewidth=0.5,alpha=0.7)
@@ -608,7 +632,7 @@ for i in tqdm(range(maxIter)):
             cbar.ax.yaxis.label.set_rotation(90)
         # set the suptitle  of the figure
         fig.suptitle(f"i = {i}")
-        fig.savefig('Figures/'+rhs_name.lower()+'_NN_approximation_iter_' + str(i) + '.png')
+        fig.savefig(FigFolderName + '/'+rhs_name.lower()+'_NN_approximation_iter_' + str(i) + '.png')
         ################################################################################################################
         fig_costs, axes = plt.subplots(len(all_cost_names) + 1, 1, figsize=(10, 7), sharex=True, dpi=400)
         axes = axes.ravel()
@@ -624,7 +648,7 @@ for i in tqdm(range(maxIter)):
             axes[iCost + 1] = pretty_axis(axes[iCost + 1], legendFlag=True)
         axes[-1].set_xlabel('Training step')
         fig_costs.tight_layout()
-        fig_costs.savefig('Figures/' + rhs_name.lower() + '_costs_iter_' + str(i) + '.png')
+        fig_costs.savefig(FigFolderName + '/' + rhs_name.lower() + '_costs_iter_' + str(i) + '.png')
         ################################################################################################################
         # # we also want to plot the layers as basis functions
         # fig, axes = plot_layers_as_bases(pinn, domain, domain_scaled)
@@ -651,9 +675,9 @@ for i in tqdm(range(maxIter)):
 # end of training loop
 
 # save the model to a pickle file
-pt.save(pinn.state_dict(), 'Models/'+rhs_name.lower()+'_'+str(nLayers)+'_layers_'+str(nHidden)+'_nodes_'+str(nInputs)+'_ins'+str(nOutputs)+'_outs.pth')
+pt.save(pinn.state_dict(), ModelFolderName + '/'+rhs_name.lower()+'_'+str(nLayers)+'_layers_'+str(nHidden)+'_nodes_'+str(nInputs)+'_ins_'+str(nOutputs)+'_outs.pth')
 # save the costs to a pickle file
-with open('Models/'+rhs_name.lower()+'_'+str(nLayers)+'_layers_'+str(nHidden)+'_nodes_'+str(nInputs)+'_ins'+str(nOutputs)+'_costs.pkl', 'wb') as f:
+with open(ModelFolderName + '/'+rhs_name.lower()+'_'+str(nLayers)+'_layers_'+str(nHidden)+'_nodes_'+str(nInputs)+'_ins_'+str(nOutputs)+'_costs.pkl', 'wb') as f:
     pkl.dump(stored_costs, f)
 ########################################################################################################################
 # plot the output of the model on the entire time interval
@@ -714,7 +738,7 @@ if rhs_name.lower() == 'hh_all_inputs_model':
     # cbar.ax.set_xticklabels(["{:.2f}".format(j+1) for j in levels])
     cbar.ax.set_ylabel('j')
     cbar.ax.yaxis.label.set_rotation(90)
-plt.savefig('Figures/'+rhs_name.lower()+'_trained_nn_output_at_training_values.png')
+plt.savefig(FigFolderName + '/'+rhs_name.lower()+'_trained_nn_output_at_training_values.png')
 ########################################################################################################################
 # plot the outputs at the true conductance
 fig_data, axes = plt.subplots(2+nOutputs, 1, figsize=(10, 7), sharex=True, dpi=400)
@@ -737,7 +761,7 @@ axes[iAxis].set_xlabel('Time')
 axes[iAxis].set_ylabel('Input voltage')
 axes[iAxis] = pretty_axis(axes[iAxis], legendFlag=False)
 plt.tight_layout()
-plt.savefig('Figures/'+rhs_name.lower()+'_trained_nn_output_at_truth.png')
+plt.savefig(FigFolderName + '/'+rhs_name.lower()+'_trained_nn_output_at_truth.png')
 ########################################################################################################################
 # plot all the cost functions and the total cost, all in separate axes with shared xaxis
 fig_costs, axes = plt.subplots(len(all_cost_names)+1, 1, figsize=(10, 7), sharex=True, dpi=400)
@@ -753,4 +777,4 @@ for iCost, cost_name in enumerate(all_cost_names):
     axes[iCost+1] = pretty_axis(axes[iCost+1], legendFlag=True)
 axes[-1].set_xlabel('Training step')
 plt.tight_layout()
-plt.savefig('Figures/'+rhs_name.lower()+'_costs.png')
+plt.savefig(FigFolderName + '/'+rhs_name.lower()+'_costs.png')

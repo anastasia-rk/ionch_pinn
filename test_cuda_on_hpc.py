@@ -2,6 +2,8 @@ import torch as pt
 import os
 
 # Is it different for M1 macs? Should I write different code using cuda for the HPC?
+
+
 # check if we have a GPU available
 if pt.backends.mps.is_available():
     mps_device = pt.device("mps")
