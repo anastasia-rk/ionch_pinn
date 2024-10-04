@@ -1,17 +1,15 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from setup import *
+from preliminaries import *
 from generate_data import *
 from tqdm import tqdm
 from plot_figures import *
 class FCN(nn.Module):
     """
     Defines a standard fully-connected network in PyTorch. this is a simple feedforward neural network
-    with a tanh activation function.
-
+    with a sigmoid activation function.
     """
-
     def __init__(self, N_INPUT, N_OUTPUT, N_HIDDEN, N_LAYERS):
         super().__init__()
         activation = nn.Sigmoid

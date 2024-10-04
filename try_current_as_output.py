@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from setup import *
+from preliminaries import *
 from generate_data import *
 from tqdm import tqdm
 from plot_figures import *
