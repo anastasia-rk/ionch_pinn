@@ -8,5 +8,5 @@
 #SBATCH --time=40:00:0
 
 module load python-uoneasy/3.11.5-GCCcore-13.2.0
-source venvs/env_pinns/bin/activate
-python projects/ionch_pinn/train_pinn_on_hh_data.py > projects/ionch_pinn/log_training_on_hh_data_gpu.txt
+source ../../venvs/env_pinns/bin/activate
+python train_pinn_on_hh_data.py > log_training_on_hh_data_gpu.txt
