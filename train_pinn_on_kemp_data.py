@@ -356,13 +356,9 @@ IC_t_domain = pt.tensor([0.], dtype=pt.float32).requires_grad_(True)
 IC_stacked_domain = stack_inputs(IC_t_domain, param_sample)
 # solve the ODE and get the true state and measured current
 time_of_domain = t_domain_unscaled.detach().numpy()
-sol_for_x = sp.integrate.solve_ivp(hh_model, [0, t_domain_unscaled[-1]], y0=IC, args=[thetas_true], dense_output=True,
-                                   method='LSODA', rtol=1e-8, atol=1e-8)
-IC = pt.tensor(sol_for_x.sol(time_of_domain[0]), dtype=pt.float32)  # get the IC from true state
-state_true = sol_for_x.sol(time_of_domain)
-measured_current = current_model(time_of_domain, sol_for_x, thetas_true, snr=10)
-# convert the true state and the measured current into a tensor
-state_true_tensor = pt.tensor(state_true.transpose())
+IC = pt.tensor(solution.sol(time_of_domain[0]), dtype=pt.float32)  # get the IC from true state
+state_true = solution.sol(time_of_domain)
+measured_current = current_model(time_of_domain, solution, thetas_true, snr=10)
 measured_current_tensor = pt.tensor(measured_current, dtype=pt.float32)
 # save the stacked domain into an numpy file
 np.save(ModelFolderName + '/stacked_scaled_domain_used_for_training.npy', stacked_domain.detach().numpy())
@@ -706,7 +702,7 @@ pinn_current_at_truth = pinn_current_at_truth.cpu().detach().numpy()
 fig_data, axes = plt.subplots(2+nOutputs, 1, figsize=(10, 7), sharex=True, dpi=400)
 axes = axes.ravel()
 # plot the solution for all outputs
-state_true_all = sol_for_x.sol(times)
+state_true_all = solution.sol(times)
 for iOutput in range(nOutputs):
     axes[iOutput].plot(times, state_true_all[iOutput,:], label='IVP solution', color='k', alpha=0.3)
     # this part could be wrong because we may have a multi-dim tensor where only the first dimension matches times

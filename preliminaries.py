@@ -8,7 +8,7 @@ import pickle as pkl
 import matplotlib.pyplot as plt
 plt.rcParams['figure.figsize'] = (20,10)
 plt.rcParams['figure.dpi'] = 400
-# plt.style.use("ggplot")
+plt.style.use("ggplot")
 
 ########################################################################################################################
 
