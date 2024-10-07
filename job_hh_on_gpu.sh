@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #SBATCH --job-name=train_pinn_on_hh_data.py
-#SBATCH --partition=ampere-q
+#SBATCH --partition=ampereq
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --gres=gpu

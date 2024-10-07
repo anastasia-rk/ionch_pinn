@@ -1,0 +1,2 @@
+Loaded voltage protocol for model fitting.
+Loaded voltage protocol for validation.

@@ -1,0 +1,84 @@
+Traceback (most recent call last):
+  File "/gpfs01/home/sbzak6/venvs/env_pinns/lib/python3.11/site-packages/matplotlib/texmanager.py", line 250, in _run_checked_subprocess
+    report = subprocess.check_output(
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/gpfs01/software/easybuild-ada-uon/software/Python/3.11.5-GCCcore-13.2.0/lib/python3.11/subprocess.py", line 466, in check_output
+    return run(*popenargs, stdout=PIPE, timeout=timeout, check=True,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/gpfs01/software/easybuild-ada-uon/software/Python/3.11.5-GCCcore-13.2.0/lib/python3.11/subprocess.py", line 548, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/gpfs01/software/easybuild-ada-uon/software/Python/3.11.5-GCCcore-13.2.0/lib/python3.11/subprocess.py", line 1026, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+  File "/gpfs01/software/easybuild-ada-uon/software/Python/3.11.5-GCCcore-13.2.0/lib/python3.11/subprocess.py", line 1950, in _execute_child
+    raise child_exception_type(errno_num, err_msg, err_filename)
+FileNotFoundError: [Errno 2] No such file or directory: 'latex'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/gpfs01/home/sbzak6/projects/ionch_pinn/train_pinn_on_hh_data.py", line 278, in <module>
+    fig.tight_layout()
+  File "/gpfs01/home/sbzak6/venvs/env_pinns/lib/python3.11/site-packages/matplotlib/figure.py", line 3545, in tight_layout
+    engine.execute(self)
+  File "/gpfs01/home/sbzak6/venvs/env_pinns/lib/python3.11/site-packages/matplotlib/layout_engine.py", line 183, in execute
+    kwargs = get_tight_layout_figure(
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/gpfs01/home/sbzak6/venvs/env_pinns/lib/python3.11/site-packages/matplotlib/_tight_layout.py", line 266, in get_tight_layout_figure
+    kwargs = _auto_adjust_subplotpars(fig, renderer,
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/gpfs01/home/sbzak6/venvs/env_pinns/lib/python3.11/site-packages/matplotlib/_tight_layout.py", line 82, in _auto_adjust_subplotpars
+    bb += [martist._get_tightbbox_for_layout_only(ax, renderer)]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/gpfs01/home/sbzak6/venvs/env_pinns/lib/python3.11/site-packages/matplotlib/artist.py", line 1410, in _get_tightbbox_for_layout_only
+    return obj.get_tightbbox(*args, **{**kwargs, "for_layout_only": True})
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/gpfs01/home/sbzak6/venvs/env_pinns/lib/python3.11/site-packages/matplotlib/_api/deprecation.py", line 457, in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/gpfs01/home/sbzak6/venvs/env_pinns/lib/python3.11/site-packages/matplotlib/axes/_base.py", line 4476, in get_tightbbox
+    ba = martist._get_tightbbox_for_layout_only(axis, renderer)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/gpfs01/home/sbzak6/venvs/env_pinns/lib/python3.11/site-packages/matplotlib/artist.py", line 1410, in _get_tightbbox_for_layout_only
+    return obj.get_tightbbox(*args, **{**kwargs, "for_layout_only": True})
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/gpfs01/home/sbzak6/venvs/env_pinns/lib/python3.11/site-packages/matplotlib/axis.py", line 1372, in get_tightbbox
+    self._update_label_position(renderer)
+  File "/gpfs01/home/sbzak6/venvs/env_pinns/lib/python3.11/site-packages/matplotlib/axis.py", line 2413, in _update_label_position
+    bboxes, bboxes2 = self._get_tick_boxes_siblings(renderer=renderer)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/gpfs01/home/sbzak6/venvs/env_pinns/lib/python3.11/site-packages/matplotlib/axis.py", line 2206, in _get_tick_boxes_siblings
+    tlb, tlb2 = axis._get_ticklabel_bboxes(ticks_to_draw, renderer)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/gpfs01/home/sbzak6/venvs/env_pinns/lib/python3.11/site-packages/matplotlib/axis.py", line 1351, in _get_ticklabel_bboxes
+    return ([tick.label1.get_window_extent(renderer)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/gpfs01/home/sbzak6/venvs/env_pinns/lib/python3.11/site-packages/matplotlib/axis.py", line 1351, in <listcomp>
+    return ([tick.label1.get_window_extent(renderer)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/gpfs01/home/sbzak6/venvs/env_pinns/lib/python3.11/site-packages/matplotlib/text.py", line 959, in get_window_extent
+    bbox, info, descent = self._get_layout(self._renderer)
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/gpfs01/home/sbzak6/venvs/env_pinns/lib/python3.11/site-packages/matplotlib/text.py", line 373, in _get_layout
+    _, lp_h, lp_d = _get_text_metrics_with_cache(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/gpfs01/home/sbzak6/venvs/env_pinns/lib/python3.11/site-packages/matplotlib/text.py", line 69, in _get_text_metrics_with_cache
+    return _get_text_metrics_with_cache_impl(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/gpfs01/home/sbzak6/venvs/env_pinns/lib/python3.11/site-packages/matplotlib/text.py", line 77, in _get_text_metrics_with_cache_impl
+    return renderer_ref().get_text_width_height_descent(text, fontprop, ismath)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/gpfs01/home/sbzak6/venvs/env_pinns/lib/python3.11/site-packages/matplotlib/backends/backend_agg.py", line 212, in get_text_width_height_descent
+    return super().get_text_width_height_descent(s, prop, ismath)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/gpfs01/home/sbzak6/venvs/env_pinns/lib/python3.11/site-packages/matplotlib/backend_bases.py", line 597, in get_text_width_height_descent
+    return self.get_texmanager().get_text_width_height_descent(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/gpfs01/home/sbzak6/venvs/env_pinns/lib/python3.11/site-packages/matplotlib/texmanager.py", line 363, in get_text_width_height_descent
+    dvifile = cls.make_dvi(tex, fontsize)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/gpfs01/home/sbzak6/venvs/env_pinns/lib/python3.11/site-packages/matplotlib/texmanager.py", line 295, in make_dvi
+    cls._run_checked_subprocess(
+  File "/gpfs01/home/sbzak6/venvs/env_pinns/lib/python3.11/site-packages/matplotlib/texmanager.py", line 254, in _run_checked_subprocess
+    raise RuntimeError(
+RuntimeError: Failed to process string with tex because latex could not be found
