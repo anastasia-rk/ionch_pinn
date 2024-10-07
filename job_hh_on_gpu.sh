@@ -4,6 +4,7 @@
 #SBATCH --partition=ampereq
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
+#SBATCH --mem=128G
 #SBATCH --gres=gpu
 #SBATCH --time=40:00:0
 

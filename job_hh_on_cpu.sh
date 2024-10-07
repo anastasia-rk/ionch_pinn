@@ -4,7 +4,7 @@
 #SBATCH --partition=defq
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=96
-#SBATCh --mem=64g
+#SBATCh --mem=128g
 #SBATCH --time=60:00:0
 
 module load python-uoneasy/3.11.5-GCCcore-13.2.0
