@@ -8,7 +8,6 @@ from torch.utils.data import DataLoader, TensorDataset
 import math
 
 
-
 # definitions
 def generate_parameter_sample(nSamples, nParams, lower, upper, rateConstraint=False):
     """
@@ -190,6 +189,9 @@ def observation_tensors(t, x, theta):
 
 ########################################################################################################################
 # start the main script
+# set the device
+device = pt.device('mps' if pt.backends.mps.is_available() else 'cuda' if pt.cuda.is_available() else 'cpu')
+print(f'Using device: {device}')
 # load the protocols
 EK = -80
 V_min = -120
@@ -224,11 +226,11 @@ current_true = current_model(times, solution, thetas_true, snr=snr)
 ####################################################################################################################
 #set up the model for the PINN training
 # create folder for figure storage
-FigFolderName = 'Figures/' + model_name.lower() + '_data'
+FigFolderName = 'Figures/' + model_name.lower() + '_data_' + str(device.type)
 if not os.path.exists(FigFolderName):
     os.makedirs(FigFolderName)
 # create the folder for data storage
-ModelFolderName = 'Models/' + model_name.lower() + '_data'
+ModelFolderName = 'Models/' + model_name.lower() + '_data_' + str(device.type)
 if not os.path.exists(ModelFolderName):
     os.makedirs(ModelFolderName)
 IsArchTest = False # if ture, this will fit the PINN output directly to true state, if false, it will fit to the RHS
@@ -254,13 +256,13 @@ elif rhs_name.lower() == 'hh_all_inputs_model':
     # generate sample for all HH parameters within given bounds
     min_val = pt.tensor([1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-5])
     max_val = pt.tensor([1e3, 0.4, 1e3, 0.4, 1e3, 0.4, 1e3, 0.4, 10])
-    nSamples = 199 # number of parameter samples
+    nSamples = 249 # number of parameter samples
     param_sample_unscaled = generate_parameter_sample(nSamples, len(max_val), min_val, max_val, rateConstraint=True)
     # I want to add the true data point to the sample to see if the PINN is able to fit that even when it struggles with others
     true_params_unscaled = pt.tensor(thetas_true).unsqueeze(-1)
     param_sample_unscaled = pt.cat([param_sample_unscaled, true_params_unscaled], dim=-1)
     nSamples = param_sample_unscaled.shape[-1]
-    nPerBatch = 10  # number of samples per batch
+    nPerBatch = 25  # number of samples per batch
     # if nSamples % nPerBatch != 0:
     #     raise ValueError('The number of samples should be divisible by the number of samples per batch.')
     # plot histograms of smapled values for each parameter
@@ -304,8 +306,8 @@ elif rhs_name.lower() == 'hh_all_inputs_model':
         p2_values_min = (pt.log(rr_min) - pt.log(p1_values)) / (sign_per_rate[i]*V_bound_per_rate[i])
         p2_values_min = pt.max(p2_values_min, min_val[2*i+1]*pt.ones_like(p2_values_min))
         p2_values_max = (pt.log(rr_max) - pt.log(p1_values)) / (sign_per_rate[i]*V_bound_per_rate[i])
-        axs[i].plot(p1_values.detach().numpy(), p2_values_min.detach().numpy(), linestyle='--', alpha=0.7, color='black',label=r'$r_{min}$')
-        axs[i].plot(p1_values.detach().numpy(), p2_values_max.detach().numpy(), linestyle='-', alpha=0.7, color='black', label=r'$r_{max}$')
+        axs[i].plot(p1_values.detach().numpy(), p2_values_min.detach().numpy(), linestyle='--', alpha=0.7, color='black',label='r_{min}')
+        axs[i].plot(p1_values.detach().numpy(), p2_values_max.detach().numpy(), linestyle='-', alpha=0.7, color='black', label='r_{max}')
         axs[i].axvline(thetas_true[2 * i], linestyle='--', alpha=0.3,  color='magenta')
         axs[i].axhline(thetas_true[2 * i + 1], linestyle='--', alpha=0.3, color='magenta', label='truth')
         axs[i].scatter(param_sample_unscaled[2*i, :].detach().numpy(), param_sample_unscaled[2*i+1, :].detach().numpy(), c=colours)
@@ -372,14 +374,11 @@ np.save(ModelFolderName + '/stacked_unscaled_domain_used_for_training.npy', stac
 domain_shape = stacked_domain.shape
 loss_seq = []
 pt.manual_seed(123)
-nLayers = 5
-nHidden = 600
+nLayers = 4
+nHidden = 500
 nOutputs = 2
 nInputs = domain_shape[-1]
-marks = [int(i) for i in np.linspace(0, nHidden, 3)]
 # define a neural network to train
-device = pt.device('mps' if pt.backends.mps.is_available() else 'cuda' if pt.cuda.is_available() else 'cpu')
-print(f'Using device: {device}')
 pinn = FCN(nInputs, nOutputs, nHidden, nLayers).to(device)
 ########################################################################################################################
 # storing parameters for plotting
@@ -454,7 +453,8 @@ IC = IC.to(device)
 # plt.savefig('Figures/Activators_as_basis.png',dpi=400)
 # # plt.show()
 
-# plot the weights and biases of the network to check if everything is plotted correctly
+# plot the weights and biases of the network to check if everything is set correctly
+marks = [int(i) for i in np.linspace(0, nHidden, 3)]
 fig, axes = plot_pinn_params_all_inputs(pinn)
 # set the suptitle
 fig.suptitle('test', fontsize=16)
@@ -468,15 +468,20 @@ maxIter = 500001
 rhs_error_state_weights = [1,1]
 # start the optimisation loop
 for i in tqdm(range(maxIter)):
-    for i_batch, (input_batch, *precomputed_RHS_batch, output_batch) in enumerate(dataloader):
+    # prepare losses for cumulation
+    running_loss = 0.0
+    running_IC_loss = 0.0
+    running_RHS_loss = 0.0
+    running_data_loss = 0.0
+    running_L1_loss = 0.0
+    running_penalty_loss = 0.0
+    for i_batch, (input_batch, *precomputed_RHS_batch, target_batch) in enumerate(dataloader):
         # if we sent all the parts of the dataset to device, we do not need to pass them individually
         # # extract time from the input batch - in the tensor dataset, the time is the first element of the input batch
         # time_of_batch = input_batch[0,:,0]
         # time_of_batch = time_of_batch.cpu().detach().numpy()
         # time_of_batch =time_of_batch/t_scaling_coeff
         time_of_batch = time_of_domain
-        # zero the gradients
-        optimiser.zero_grad()
         # compute the gradient loss
         state_batch = pinn(input_batch)
         # use custom detivarive function to compute the derivatives of outputs, because grad assumed that the output is a scalar
@@ -507,7 +512,6 @@ for i in tqdm(range(maxIter)):
             del sumerror
         else:
             loss_rhs = pt.tensor(0,dtype=pt.float32).to(device)
-        stored_costs['RHS'].append(loss_rhs.item())
         ################################################################################################################
         # compute the IC loss
         if lambda_ic != 0:
@@ -516,15 +520,13 @@ for i in tqdm(range(maxIter)):
             loss_ic = pt.sum((state_ic - IC)**2)
         else:
             loss_ic = pt.tensor(0,dtype=pt.float32).to(device)
-        stored_costs['IC'].append(loss_ic.item())
         ################################################################################################################
         # commpute the data loss w.r.t. the current
         if lambda_data != 0:
-            residuals_data = current_pinn - output_batch
+            residuals_data = current_pinn - target_batch
             loss_data = pt.sum((residuals_data)**2) # by default, pytorch sum goes over all dimensions
         else:
             loss_data = pt.tensor(0,dtype=pt.float32).to(device)
-        stored_costs['Data'].append(loss_data.item())
         ################################################################################################################
         # compute the L1 norm
         if lambda_l1 != 0:
@@ -532,28 +534,37 @@ for i in tqdm(range(maxIter)):
             L1 = pt.tensor([par_pinn[l].abs().sum() for l in range(len(par_pinn))]).sum()
         else:
             L1 = pt.tensor(0,dtype=pt.float32).to(device)
-        stored_costs['L1'].append(L1.item())
-        ################################################################################################################
+        ###############################################################################################################
+        # #
         #  compute network output penalty (we know that each output must be between 0 and 1)
-        output_penalty = pt.tensor(0,dtype=pt.float32).to(device)
+        target_penalty = pt.tensor(0,dtype=pt.float32).to(device)
         if lambda_penalty != 0:
             for iOutput in range(nOutputs):
                 lower_bound = pt.zeros_like(state_batch[...,iOutput]).to(device)
                 upper_bound = pt.ones_like(state_batch[...,iOutput]).to(device)
-                output_penalty += pt.sum(pt.relu(lower_bound-state_batch[...,iOutput])) + pt.sum(pt.relu(state_batch[...,iOutput]-upper_bound))
-        stored_costs['Penalty'].append(output_penalty.item())
+                target_penalty += pt.sum(pt.relu(lower_bound-state_batch[...,iOutput])) + pt.sum(pt.relu(state_batch[...,iOutput]-upper_bound))
         ################################################################################################################
+        # zero the gradients
+        optimiser.zero_grad()
         # compute the total loss
-        loss = lambda_ic*loss_ic + lambda_rhs*loss_rhs  + lambda_data*loss_data + lambda_l1*L1 + lambda_penalty*output_penalty
-        # store the cost function into the list
-        loss_seq.append(loss.item())
-        # # retain gradient of the cost to print and save it
-        # loss.retain_grad()
+        loss = lambda_ic*loss_ic + lambda_rhs*loss_rhs  + lambda_data*loss_data + lambda_l1*L1 + lambda_penalty*target_penalty
         # the backward pass computes the gradient of the loss with respect to the parameters
         loss.backward(retain_graph=True)
-        # save the gradient of the loss
-        # store_grad = loss.grad
+        # make a step in the parameter space
         optimiser.step()
+        # store the losses
+        running_loss += loss.item()
+        running_IC_loss += loss_ic.item()
+        running_RHS_loss += loss_rhs.item()
+        running_data_loss += loss_data.item()
+        running_L1_loss += L1.item()
+        running_penalty_loss += target_penalty.item()
+        running_losses = [running_IC_loss, running_RHS_loss, running_L1_loss, running_data_loss, running_penalty_loss]
+    ####################################################################################################################
+    # store the loss values
+    for iLoss in range(len(all_cost_names)):
+        stored_costs[all_cost_names[iLoss]].append(running_losses[iLoss])
+    loss_seq.append(running_loss)
     ####################################################################################################################
     # occasionally plot the output, save the network state and plot the costs
     if i % plotEvery == 0:
@@ -563,7 +574,7 @@ for i in tqdm(range(maxIter)):
             nHidden) + '_nodes_' + str(nInputs) + '_ins_' + str(nOutputs) + '_outs.pth')
         # save the costs to a pickle file
         with open(ModelFolderName + '/' + rhs_name.lower() + '_' + str(nLayers) + '_layers_' + str(
-                nHidden) + '_nodes_' + str(nInputs) + '_ins_' + str(nOutputs) + '_costs.pkl', 'wb') as f:
+                nHidden) + '_nodes_' + str(nInputs) + '_ins_' + str(nOutputs) + 'outs_costs.pkl', 'wb') as f:
             pkl.dump(stored_costs, f)
         # plotting for different samples - we need to call the correct tenso since we have changed how the input tensors are generated
         # in order to plot over the whole interval, we need to produce output
@@ -634,21 +645,11 @@ for i in tqdm(range(maxIter)):
         fig.suptitle(f"i = {i}")
         fig.savefig(FigFolderName + '/'+rhs_name.lower()+'_NN_approximation_iter_' + str(i) + '.png')
         ################################################################################################################
-        fig_costs, axes = plt.subplots(len(all_cost_names) + 1, 1, figsize=(10, 7), sharex=True, dpi=400)
-        axes = axes.ravel()
-        axes[0].plot(loss_seq)
-        axes[0].set_yscale('log')
-        axes[0].set_ylabel('Total loss')
-        axes[0] = pretty_axis(axes[0], legendFlag=False)
-        for iCost, cost_name in enumerate(all_cost_names):
-            axes[iCost + 1].plot(stored_costs[cost_name], label=r'$\lambda=$' + '{:.4E}'.format(lambdas[iCost]),
-                                 linewidth=1)
-            axes[iCost + 1].set_yscale('log')
-            axes[iCost + 1].set_ylabel(cost_name)
-            axes[iCost + 1] = pretty_axis(axes[iCost + 1], legendFlag=True)
-        axes[-1].set_xlabel('Training step')
+        # plot costs of the iteration
+        fig_costs, axes = plot_costs(loss_seq, stored_costs, lambdas, all_cost_names)
         fig_costs.tight_layout()
         fig_costs.savefig(FigFolderName + '/' + rhs_name.lower() + '_costs_iter_' + str(i) + '.png')
+        plt.close('all')
         ################################################################################################################
         # # we also want to plot the layers as basis functions
         # fig, axes = plot_layers_as_bases(pinn, domain, domain_scaled)
@@ -677,7 +678,7 @@ for i in tqdm(range(maxIter)):
 # save the model to a pickle file
 pt.save(pinn.state_dict(), ModelFolderName + '/'+rhs_name.lower()+'_'+str(nLayers)+'_layers_'+str(nHidden)+'_nodes_'+str(nInputs)+'_ins_'+str(nOutputs)+'_outs.pth')
 # save the costs to a pickle file
-with open(ModelFolderName + '/'+rhs_name.lower()+'_'+str(nLayers)+'_layers_'+str(nHidden)+'_nodes_'+str(nInputs)+'_ins_'+str(nOutputs)+'_costs.pkl', 'wb') as f:
+with open(ModelFolderName + '/'+rhs_name.lower()+'_'+str(nLayers)+'_layers_'+str(nHidden)+'_nodes_'+str(nInputs)+'_ins_'+str(nOutputs)+'outs_costs.pkl', 'wb') as f:
     pkl.dump(stored_costs, f)
 ########################################################################################################################
 # plot the output of the model on the entire time interval
@@ -704,7 +705,7 @@ pinn_output_at_truth = pinn_output_at_truth.cpu().detach().numpy()
 pinn_current_at_truth = pinn_current_at_truth.cpu().detach().numpy()
 ########################################################################################################################
 # plot outputs at training points
-fig_data, axes = plt.subplots(2+nOutputs, 1, figsize=(10, 7), sharex=True, dpi=400)
+fig, axes = plt.subplots(2+nOutputs, 1, figsize=(10, 7), sharex=True, dpi=400)
 axes = axes.ravel()
 # plot the solution for all outputs
 state_true_all = sol_for_x.sol(times)
@@ -734,10 +735,12 @@ axes[iAxis].set_ylabel('Input voltage')
 axes[iAxis] = pretty_axis(axes[iAxis], legendFlag=False)
 fig.tight_layout(pad=0.3, w_pad=0.4, h_pad=0.2)
 if rhs_name.lower() == 'hh_all_inputs_model':
-    cbar = fig.colorbar(cond_heatmap, ax=axes.tolist(), location='top', aspect=50) # ticks=levels
+    cbar = fig.colorbar(cond_heatmap, ax=axes.tolist(), location='top', aspect=50) #ticks=levels
     # cbar.ax.set_xticklabels(["{:.2f}".format(j+1) for j in levels])
     cbar.ax.set_ylabel('j')
     cbar.ax.yaxis.label.set_rotation(90)
+# set the suptitle  of the figure
+fig.suptitle("Trained PINN output at training points")
 plt.savefig(FigFolderName + '/'+rhs_name.lower()+'_trained_nn_output_at_training_values.png')
 ########################################################################################################################
 # plot the outputs at the true conductance
@@ -763,18 +766,6 @@ axes[iAxis] = pretty_axis(axes[iAxis], legendFlag=False)
 plt.tight_layout()
 plt.savefig(FigFolderName + '/'+rhs_name.lower()+'_trained_nn_output_at_truth.png')
 ########################################################################################################################
-# plot all the cost functions and the total cost, all in separate axes with shared xaxis
-fig_costs, axes = plt.subplots(len(all_cost_names)+1, 1, figsize=(10, 7), sharex=True, dpi=400)
-axes = axes.ravel()
-axes[0].plot(loss_seq)
-axes[0].set_yscale('log')
-axes[0].set_ylabel('Total loss')
-axes[0] = pretty_axis(axes[0], legendFlag=False)
-for iCost, cost_name in enumerate(all_cost_names):
-    axes[iCost+1].plot(stored_costs[cost_name], label=r'$\lambda=$' + '{:.4E}'.format(lambdas[iCost]), linewidth=1)
-    axes[iCost+1].set_yscale('log')
-    axes[iCost+1].set_ylabel(cost_name)
-    axes[iCost+1] = pretty_axis(axes[iCost+1], legendFlag=True)
-axes[-1].set_xlabel('Training step')
-plt.tight_layout()
-plt.savefig(FigFolderName + '/'+rhs_name.lower()+'_costs.png')
+fig, axes = plot_costs(loss_seq, stored_costs, lambdas, all_cost_names)
+fig.tight_layout()
+fig.savefig(FigFolderName + '/' + rhs_name.lower() + '_costs.png')
