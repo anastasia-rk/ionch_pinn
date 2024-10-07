@@ -7,12 +7,12 @@ plt.rcParams['figure.figsize'] = (20,10)
 plt.rcParams['figure.dpi'] = 400
 plt.rcParams['axes.facecolor']='white'
 plt.rcParams['savefig.facecolor']='white'
-plt.style.use("ggplot")
-plt.rcParams.update({
-    "text.usetex": True,
-    "font.family": "sans-serif",
-    "font.sans-serif": ["Helvetica"]
-        })
+# plt.style.use("ggplot")
+# plt.rcParams.update({
+#     "text.usetex": True,
+#     "font.family": "sans-serif",
+#     "font.sans-serif": ["Helvetica"]
+#         })
 import numpy as np
 import scipy as sp
 from scipy.interpolate import BSpline
