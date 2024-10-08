@@ -443,7 +443,7 @@ if __name__ == '__main__':
     # if the device we use is cpu, set num_workers to 60, if it is cuda set num_workers to 8
     num_workers = 0
     if device.type == 'cuda':
-        num_workers = 1 #ßmin(16, 2*pt.cuda.device_count())
+        num_workers = 0 #ßmin(16, 2*pt.cuda.device_count())
     elif device.type == 'cpu':
         num_workers = min(60, os.cpu_count())
     print(f'Number of workers used:{num_workers}')
