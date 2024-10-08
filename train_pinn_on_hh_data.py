@@ -261,7 +261,7 @@ if __name__ == '__main__':
         # generate sample for all HH parameters within given bounds
         min_val = pt.tensor([1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-5])
         max_val = pt.tensor([1e3, 0.4, 1e3, 0.4, 1e3, 0.4, 1e3, 0.4, 10])
-        nSamples = 19 # number of parameter samples
+        nSamples = 249 # number of parameter samples
         param_sample_unscaled = generate_parameter_sample(nSamples, len(max_val), min_val, max_val, rateConstraint=True)
         # I want to add the true data point to the sample to see if the PINN is able to fit that even when it struggles with others
         true_params_unscaled = pt.tensor(thetas_true).unsqueeze(-1)
@@ -472,9 +472,7 @@ if __name__ == '__main__':
     ########################################################################################################################
     # loop settings
     plotEvery = 10000
-    maxIter = 500001
-    plotEvery = 2
-    maxIter = 10
+    maxIter = 300001
     rhs_error_state_weights = [1,1]
     # start the optimisation loop
     for i in tqdm(range(maxIter)):
@@ -586,7 +584,7 @@ if __name__ == '__main__':
                 nHidden) + '_nodes_' + str(nInputs) + '_ins_' + str(nOutputs) + '_outs.pth')
             # save the costs to a pickle file
             with open(ModelFolderName + '/' + rhs_name.lower() + '_' + str(nLayers) + '_layers_' + str(
-                    nHidden) + '_nodes_' + str(nInputs) + '_ins_' + str(nOutputs) + 'outs_costs.pkl', 'wb') as f:
+                    nHidden) + '_nodes_' + str(nInputs) + '_ins_' + str(nOutputs) + '_outs_costs.pkl', 'wb') as f:
                 pkl.dump(stored_costs, f)
             # plotting for different samples - we need to call the correct tenso since we have changed how the input tensors are generated
             # in order to plot over the whole interval, we need to produce output
@@ -690,7 +688,7 @@ if __name__ == '__main__':
     # save the model to a pickle file
     pt.save(pinn.state_dict(), ModelFolderName + '/'+rhs_name.lower()+'_'+str(nLayers)+'_layers_'+str(nHidden)+'_nodes_'+str(nInputs)+'_ins_'+str(nOutputs)+'_outs.pth')
     # save the costs to a pickle file
-    with open(ModelFolderName + '/'+rhs_name.lower()+'_'+str(nLayers)+'_layers_'+str(nHidden)+'_nodes_'+str(nInputs)+'_ins_'+str(nOutputs)+'outs_costs.pkl', 'wb') as f:
+    with open(ModelFolderName + '/'+rhs_name.lower()+'_'+str(nLayers)+'_layers_'+str(nHidden)+'_nodes_'+str(nInputs)+'_ins_'+str(nOutputs)+'_outs_costs.pkl', 'wb') as f:
         pkl.dump(stored_costs, f)
     ########################################################################################################################
     # plot the output of the model on the entire time interval
