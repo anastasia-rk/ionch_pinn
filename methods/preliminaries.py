@@ -91,7 +91,7 @@ np.random.seed(42)
 pt.manual_seed(42)
 pt.cuda.manual_seed_all(42)
 pt.mps.manual_seed(42)
-pt.use_deterministic_algorithms(True)
+# pt.use_deterministic_algorithms(True)
 # set the default dtype
 pt.set_default_dtype(pt.float32)
 # set the default generator for workers

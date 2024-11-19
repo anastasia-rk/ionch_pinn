@@ -183,7 +183,7 @@ if __name__ == '__main__':
             optimiser.zero_grad()
             output_batch = pinn(input_batch)
             losses = compute_pinn_loss(pinn, input_batch, output_batch, target_batch, lambdas,
-                                       scaling_coeffs, IC, precomputed_RHS_params, device)
+                                       scaling_coeffs, IC, precomputed_RHS_batch, device)
             loss, loss_rhs, loss_ic, loss_data, L1, target_penalty = losses
             ################################################################################################################
             # compute the total loss
@@ -307,7 +307,7 @@ if __name__ == '__main__':
             # fig.savefig(figureFolder + '/'+rhs_name.lower()+'_params_iter_' + str(i) + '.png', dpi=400)
             # plt.close('all')
             #  check the convergence of the loss function
-            if i > 0:
+            if i > firstIter:
                 diff_of_cost = np.abs(loss_seq[-1] - loss_seq[-2]) / loss_seq[-1]
                 print(diff_of_cost)
                 if diff_of_cost < 1e-6:

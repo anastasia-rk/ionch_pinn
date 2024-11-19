@@ -199,7 +199,7 @@ if __name__ == '__main__':
         # generate sample for all HH parameters within given bounds
         min_val = pt.tensor([1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-5])
         max_val = pt.tensor([1e3, 0.4, 1e3, 0.4, 1e3, 0.4, 1e3, 0.4, 10])
-        nSamples = 199 # number of parameter samples
+        nSamples = 99 # number of parameter samples
         param_sample_unscaled = generate_parameter_sample(nSamples, len(max_val), min_val, max_val, rateConstraint=True)
         # I want to add the true data point to the sample to see if the PINN is able to fit that even when it struggles with others
         true_params_unscaled = pt.tensor(thetas_true).unsqueeze(-1)
@@ -365,8 +365,8 @@ if __name__ == '__main__':
     state_domain = pinn(stacked_domain)
     # for the training purposes, we can pre-compute part of the RHS since it will only depend on the domain that does not change
     # this will save us some time in the computation - note that this is in the original scale
-    precomputed_RHS_params = RHS_tensors_precompute(time_of_domain, state_domain, stacked_domain_unscaled)
-    current_pinn = observation_tensors(time_of_domain, state_domain, stacked_domain)
+    precomputed_RHS_params = RHS_tensors_precompute(time_of_domain, state_domain, stacked_domain_unscaled, device)
+    current_pinn = observation_tensors(time_of_domain, state_domain, stacked_domain, device)
     current_pinn = current_pinn/param_scaling_coeff
     # now expand the measured current tensor to match the shape of the current tensor that will be produced by the PINN
     current_shape = current_pinn.shape

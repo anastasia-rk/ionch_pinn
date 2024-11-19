@@ -1,3 +1,4 @@
+from methods.preliminaries import *
 from methods.nn_classes import *
 
 def sigmoid(x,scale=1,shift=0):
