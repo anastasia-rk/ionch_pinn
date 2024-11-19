@@ -2,20 +2,25 @@ from methods.generate_training_set import *
 from methods.plot_figures import *
 from torch.utils.data import DataLoader, TensorDataset
 import torch.multiprocessing as mp
-
 ########################################################################################################################
 # start the main script
 if __name__ == '__main__':
+    isATest = False
     # set the training data
     model_name = 'kemp' # model we use to generate the synthetic data for data cost
     rhs_name = 'hh' # the misspecified right hand side model to be used in gradient cost
-    nSamples = 500 # number of samples in the training dataset
-    nPerBatch = 50 # number of samples per batch
     snr_in_db = 30 # signal to noise ratio in dB for the synthetic data generation
     scaled_domain_size = 10 # size of the domain for the scaled input
-    # training loop settings
-    plotEvery = 20000
-    maxIter = 500001
+    if isATest:
+        nSamples = 20
+        nPerBatch = 1
+        maxIter = 101
+        plotEvery = 10
+    else:
+        nSamples = 500
+        nPerBatch = 50
+        maxIter = 500001
+        plotEvery = 20000
     ######################################################################################################
     # set the folders for figures and pickles
     figureFolder = direcory_names['figures']
@@ -92,20 +97,41 @@ if __name__ == '__main__':
     # drip elements of layer list that are duplicates but preserve order - done in weird way from stackoverflow!
     layer_names = [first_layer_name] + list(dict.fromkeys(hidden_layer_names)) + [last_layer_name]
     ########################################################################################################################
+    # define the optimiser and the loss function weights
+    optimiser = pt.optim.Adam(pinn.parameters(), lr=1e-4, weight_decay=1e-4)
+    ## at this stage, everything that is used for training has to be on the device!
+    ########################################################################################################################
+    ########################################################################################################################
+    # define the optimiser and the loss function weights
+    optimiser = pt.optim.Adam(pinn.parameters(),lr=1e-4, weight_decay=1e-4)
+    ## at this stage, everything that is used for training has to be on the device!
+    ########################################################################################################################
     # check if we already have pre-trained weights for this pinn configuration in the modelFolder
-    if os.path.exists(ModelFolderName + '/' + pinnName + '.pth'):
-        pinn.load_state_dict(pt.load(ModelFolderName + '/' + pinnName + '.pth'))
+    previous_training_output = ModelFolderName + '/' + pinnName + '.pth'
+    if os.path.exists(previous_training_output):
+        # make sure we can load networks across devices
+        checkpoint = pt.load(previous_training_output, map_location=device,weights_only=True)
         print('Pre-trained weights found. Loading the network.')
+        if 'model_state_dict' in checkpoint.keys():
+            pinn.load_state_dict(checkpoint['model_state_dict'])
+            # check if checkpoint contains the key optimiser state
+            if 'optimizer_state_dict' in checkpoint.keys():
+                optimiser.load_state_dict(checkpoint['optimizer_state_dict'])
+            if 'epoch' in checkpoint.keys():
+                firstIter = checkpoint['epoch']
+            if 'lambdas' in checkpoint.keys():
+                lambdas = checkpoint['lambdas']
+            if 'loss_names' in checkpoint.keys():
+                all_cost_names = checkpoint['loss_names']
+        else:
+            print('No model state found in the checkpoint. Initalsing fist iteation')
+            firstIter = 0
+            pinn, lambdas, all_cost_names = initialise_optimisation(pinn)
     else:
         print('No pre-trained weights found. Initialising the network.')
-        # get the biases of the first layer
-        biases = pinn.first_layer[0].bias.data
-        # provide larger biases for the first layer as the initialsiation
-        a = pt.tensor(-10)
-        b = pt.tensor(10)
-        biases_new = (b - a) * pt.rand_like(biases) + a
-        # set the biases of the first layer
-        pinn.first_layer[0].bias.data = biases_new
+        # initialise the costs
+        firstIter = 0
+        pinn, lambdas, all_cost_names = initialise_optimisation(pinn)
     ########################################################################################################################
     ## plots to check the network architecture
     # plot the activation functions of the network as a function of domain
@@ -138,26 +164,12 @@ if __name__ == '__main__':
     dataloader = DataLoader(dataset, batch_size=nPerBatch, shuffle=False, num_workers=num_workers, generator=worker_generator)
     # send the IC domain to device
     ########################################################################################################################
-    # define the optimiser and the loss function weights
-    optimiser = pt.optim.Adam(pinn.parameters(),lr=1e-4, weight_decay=1e-4)
-    # loss = pt.tensor(100) # if we are using a while loop, we need to initialise the loss
-    i = 0
-    lambda_ic = 1e-2 # 1e-2 # weight on the gradient fitting cost
-    lambda_rhs = 1 # weight on the right hand side fitting cost
-    lambda_l1 = 0 # weight on the L1 norm of the parameters
-    lambda_data = 1e-7 # weight on the data fitting cost
-    lambda_penalty = 1e-3 # weight on the output penalty
-    lambdas = [lambda_ic, lambda_rhs, lambda_l1, lambda_data,lambda_penalty]
-    # placeholder for storing the costs
-    all_cost_names = ['IC', 'RHS', 'L1', 'Data','Penalty']
+    rhs_error_state_weights = [1, 1]
+    scaling_coeffs = [t_scaling_coeff, param_scaling_coeff, rhs_error_state_weights]
     stored_costs = {name: [] for name in all_cost_names}
     loss_seq = []
-    ## at this stage, everything that is used for training has to be on the device!
-    ########################################################################################################################
-    rhs_error_state_weights = [1,1]
-    scaling_coeffs = [t_scaling_coeff, param_scaling_coeff, rhs_error_state_weights]
     # start the optimisation loop
-    for i in tqdm(range(maxIter)):
+    for i in tqdm(range(firstIter, firstIter + maxIter)):
         # prepare losses for cumulation
         running_loss = 0.0
         running_IC_loss = 0.0
@@ -196,8 +208,16 @@ if __name__ == '__main__':
         # occasionally plot the output, save the network state and plot the costs
         if i % plotEvery == 0:
             # save the model to a pickle file
-            pt.save(pinn.state_dict(), ModelFolderName + '/' + pinnName + '.pth')
-            # save the costs to a pickle file
+            pt.save({
+                'epoch': i,
+                'model_state_dict': pinn.state_dict(),
+                'optimizer_state_dict': optimiser.state_dict(),
+                'loss': loss,
+                'losses': running_losses,
+                'lambdas': lambdas,
+                'loss_names': all_cost_names
+            }, ModelFolderName + '/' + pinnName + '.pth')
+            # save the costs to a pickle file - this is just for plotting
             with open(ModelFolderName + '/' + pinnName + '_training_costs.pkl', 'wb') as f:
                 pkl.dump(stored_costs, f)
             # plotting for different samples - we need to call the correct tenso since we have changed how the input tensors are generated
@@ -297,7 +317,15 @@ if __name__ == '__main__':
     # end of training loop
     ########################################################################################################################
     # save the model to a pickle file
-    pt.save(pinn.state_dict(), ModelFolderName + '/' + pinnName + '.pth')
+    pt.save({
+        'epoch': i,
+        'model_state_dict': pinn.state_dict(),
+        'optimizer_state_dict': optimiser.state_dict(),
+        'loss': loss,
+        'losses': running_losses,
+        'lambdas': lambdas,
+        'loss_names': all_cost_names
+    }, ModelFolderName + '/' + pinnName + '.pth')
     # save the costs to a pickle file
     with open(ModelFolderName + '/' + pinnName + '_training_costs.pkl', 'wb') as f:
         pkl.dump(stored_costs, f)

@@ -201,6 +201,33 @@ class FCN_multi_input(nn.Module):
             running_penalty_loss += target_penalty.item()
         return running_IC_loss, running_RHS_loss, running_data_loss, running_L1_loss, running_penalty_loss, running_loss
 
+def initialise_optimisation(pinn):
+    """
+    This function initialises the optimisation settings for the PINN training
+    :param pinn: the neural network - for initial setting of the biases
+    :return:
+    lambdas: the weights for the constituent loss terms
+    all_cost_names: the names of the constituent loss terms
+    """
+    # initialise the cost weights
+    lambda_ic = 1e-2  # 1e-2 # weight on the gradient fitting cost
+    lambda_rhs = 1  # weight on the right hand side fitting cost
+    lambda_l1 = 0  # weight on the L1 norm of the parameters
+    lambda_data = 1e-7  # weight on the data fitting cost
+    lambda_penalty = 1e-3  # weight on the output penalty
+    lambdas = [lambda_ic, lambda_rhs, lambda_l1, lambda_data, lambda_penalty]
+    # placeholder for storing the costs
+    all_cost_names = ['IC', 'RHS', 'L1', 'Data', 'Penalty']
+    # get the biases of the first layer
+    biases = pinn.first_layer[0].bias.data
+    # provide larger biases for the first layer as the initialsiation
+    a = pt.tensor(-10)
+    b = pt.tensor(10)
+    biases_new = (b - a) * pt.rand_like(biases) + a
+    # set the biases of the first layer
+    pinn.first_layer[0].bias.data = biases_new
+    return pinn, lambdas, all_cost_names
+
 def compute_derivs_and_current(pinn_input, pinn_output, precomputed_rhs_part, scaling_coeffs, device):
     """
     This function computes the derivatives of the outputs w.r.t. the inputs and the current tensor
