@@ -6,7 +6,7 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --mem=128G
 #SBATCH --gres=gpu
-#SBATCH --time=40:00:0
+#SBATCH --time=120:00:0
 
 module load python-uoneasy/3.11.5-GCCcore-13.2.0
 module load cuda-uoneasy/12.1.1 

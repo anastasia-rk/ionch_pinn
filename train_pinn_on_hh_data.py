@@ -25,16 +25,20 @@ if __name__ == '__main__':
     ######################################################################################################
     # set the folders for figures and pickles
     figureFolder = direcory_names['figures']
-    pickleFolder = direcory_names['pickles']
     modelFolder = direcory_names['models']
+    pickleFolder = direcory_names['pickles']
     # create folder for figure storage
-    FigFolderName = direcory_names['figures'] + '/' + model_name.lower() + '_data'
+    FigFolderName = figureFolder + '/' + model_name.lower() + '_data_' + device.type
     if not os.path.exists(FigFolderName):
         os.makedirs(FigFolderName)
     # create the folder for data storage
-    ModelFolderName = direcory_names['models'] + '/' + model_name.lower() + '_data'
+    ModelFolderName = modelFolder + '/' + model_name.lower() + '_data_' + device.type
     if not os.path.exists(ModelFolderName):
         os.makedirs(ModelFolderName)
+    #  creat folder for pickles
+    PickleFolderName = pickleFolder + '/' + model_name.lower() + '_data_' + device.type
+    if not os.path.exists(PickleFolderName):
+        os.makedirs(PickleFolderName)
     ####################################################################################################################
     # set up the colour wheel for plotting output at different training samples - this will be useful for plotting
     colours = plt.cm.PuOr(np.linspace(0, 1, nSamples))
@@ -57,16 +61,27 @@ if __name__ == '__main__':
     unique_times = np.unique(np.hstack(knots_roi))
     ####################################################################################################################
     # generate the input sample for training the PINN and generate all necessseary intermediate values for the training
-    ArchTestFlag = False
-    t_domain_unscaled, t_domain, param_sample_unscaled, param_sample, measured_current_tensor, pinn_state = (
-        generate_HH_training_set_to_files(unique_times,
-        nSamples, model_name=model_name, snr_db=30, scaled_domain_size=10))
-    stacked_domain_unscaled = stack_inputs(t_domain_unscaled, param_sample_unscaled)
-    stacked_domain = stack_inputs(t_domain, param_sample)
-    IC_t_domain = pt.tensor([unique_times[0]], dtype=pt.float32)
-    IC_stacked_domain = stack_inputs(IC_t_domain, param_sample)
+    training_set_files = [name for name in os.listdir(ModelFolderName) if name.endswith('.npy') and 'train' in name]
+    if len(training_set_files) > 0:
+        #  load stacked domain and measured current from files
+        stacked_domain = pt.tensor(np.load(ModelFolderName + '/stacked_scaled_domain_used_for_training.npy'), dtype=pt.float32).requires_grad_(True)
+        stacked_domain_unscaled = pt.tensor(np.load(ModelFolderName + '/stacked_unscaled_domain_used_for_training.npy'), dtype=pt.float32).requires_grad_(True)
+        IC_stacked_domain = pt.tensor(np.load(ModelFolderName + '/IC_stacked_domain_used_for_training.npy'), dtype=pt.float32).requires_grad_(True)
+        pinn_state = pt.tensor(np.load(ModelFolderName + '/true_states_used_for_training_hh_only.npy'), dtype=pt.float32).requires_grad_(True)
+        measured_current = np.load(ModelFolderName + '/current_data_used_for_training.npy')
+        measured_current_tensor = pt.tensor(measured_current, dtype=pt.float32).requires_grad_(True)
+    else:
+        ArchTestFlag = False
+        t_domain_unscaled, t_domain, param_sample_unscaled, param_sample, measured_current_tensor, pinn_state = (
+            generate_HH_training_set_to_files(unique_times,
+            nSamples, model_name=model_name, snr_db=snr_in_db, scaled_domain_size=scaled_domain_size))
+        stacked_domain_unscaled = stack_inputs(t_domain_unscaled, param_sample_unscaled)
+        stacked_domain = stack_inputs(t_domain, param_sample)
+        IC_t_domain = pt.tensor([unique_times[0]], dtype=pt.float32)
+        IC_stacked_domain = stack_inputs(IC_t_domain, param_sample)
+        measured_current = measured_current_tensor[0, :].detach().numpy()
+    # derive other necessary values for training
     IC = pt.tensor([0, 1]) # I think for training on Kemp, we have nothing to compare our initial conditions to.
-    measured_current = measured_current_tensor[0,:].detach().numpy()
     t_scaling_coeff = scaled_domain_size / unique_times[-1]
     param_scaling_coeff = scaled_domain_size / pt.max(stacked_domain_unscaled)
     # send everything to device
@@ -119,6 +134,12 @@ if __name__ == '__main__':
                 lambdas = checkpoint['lambdas']
             if 'loss_names' in checkpoint.keys():
                 all_cost_names = checkpoint['loss_names']
+            # then rename all files in the model folder by adding '_epoch' + str(firstIter) to the end of the name
+            for filename in os.listdir(ModelFolderName):
+                if filename.endswith('.pth'):
+                    os.rename(ModelFolderName + '/' + filename, ModelFolderName + '/' + filename[:-4] + '_epoch_' + str(firstIter) + '.pth')
+                if filename.endswith('.pkl'):
+                    os.rename(ModelFolderName + '/' + filename, ModelFolderName + '/' + filename[:-4] + '_epoch_' + str(firstIter) + '.pkl')
         else:
             print('No model state found in the checkpoint. Initalsing fist iteation')
             firstIter = 0
