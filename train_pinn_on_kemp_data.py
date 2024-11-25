@@ -83,8 +83,8 @@ if __name__ == '__main__':
         stacked_domain = stack_inputs(t_domain, param_sample)
         IC_t_domain = pt.tensor([unique_times[0]], dtype=pt.float32)
         IC_stacked_domain = stack_inputs(IC_t_domain, param_sample)
-        measured_current = measured_current_tensor[0, :].detach().numpy()
     # derive other necessary values for training
+    measured_current = measured_current_tensor[0, :].detach().numpy()
     IC = pt.tensor([0, 1])  # I think for training on Kemp, we have nothing to compare our initial conditions to.
     t_scaling_coeff = scaled_domain_size / unique_times[-1]
     param_scaling_coeff = scaled_domain_size / pt.max(stacked_domain_unscaled)
