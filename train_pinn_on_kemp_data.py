@@ -60,6 +60,7 @@ if __name__ == '__main__':
     unique_times = np.unique(np.hstack(knots_roi))
     ####################################################################################################################
     # generate the input sample for training the PINN and generate all necessseary intermediate values for the training
+    ArchTestFlag = False
     training_set_files = [name for name in os.listdir(ModelFolderName) if name.endswith('.npy') and 'train' in name]
     if len(training_set_files) > 0:
         #  load stacked domain and measured current from files
@@ -74,7 +75,6 @@ if __name__ == '__main__':
         measured_current = np.load(ModelFolderName + '/current_data_used_for_training.npy')
         measured_current_tensor = pt.tensor(measured_current, dtype=pt.float32).requires_grad_(True)
     else:
-        ArchTestFlag = False
         t_domain_unscaled, t_domain, param_sample_unscaled, param_sample, measured_current_tensor, pinn_state = (
             generate_HH_training_set_to_files(unique_times,
                                               nSamples, model_name=model_name, snr_db=snr_in_db,
