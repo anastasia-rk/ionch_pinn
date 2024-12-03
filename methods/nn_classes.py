@@ -215,9 +215,10 @@ def initialise_optimisation(pinn):
     lambda_l1 = 0  # weight on the L1 norm of the parameters
     lambda_data = 1e-7  # weight on the data fitting cost
     lambda_penalty = 1e-3  # weight on the output penalty
-    lambdas = [lambda_ic, lambda_rhs, lambda_l1, lambda_data, lambda_penalty]
+    lambdas = [lambda_ic, lambda_rhs, lambda_data, lambda_l1, lambda_penalty]
     # placeholder for storing the costs
-    all_cost_names = ['IC', 'RHS', 'L1', 'Data', 'Penalty']
+    all_cost_names = ['IC', 'RHS', 'Data', 'L1', 'Penalty']
+    lambdas = {name: lambdas[i] for i, name in enumerate(all_cost_names)}
     # get the biases of the first layer
     biases = pinn.first_layer[0].bias.data
     # provide larger biases for the first layer as the initialsiation
@@ -258,14 +259,14 @@ def compute_pinn_loss(pinn, pinn_input, pinn_output, target, lambdas, scaling_co
     :param pinn_input: input tensor
     :param pinn_output: pinn output tensor
     :param target: target tensor
-    :param lambdas: weights for constituent loss terms
+    :param lambdas: weights for constituent loss terms - dictionary to be unpacked
     :param scaling_coeffs: coefficients that rescale the domain
     :param IC: initial condition tensor
     :param precomputed_rhs_part: precomputed part of the right hand side
     :param device: the devide where to send losses
     :return: the combined loss and the individual losses
     """
-    lambda_rhs, lambda_ic, lambda_data, lambda_l1, lambda_penalty = lambdas
+    # lambda_ic, lambda_rhs, lambda_data, lambda_l1, lambda_penalty = lambdas
     t_scaling_coeff, param_scaling_coeff, rhs_error_state_weights = scaling_coeffs
     ################################################################################################################
     dxdt, rhs_pinn, current_pinn = compute_derivs_and_current(pinn_input, pinn_output, precomputed_rhs_part, scaling_coeffs, device)
@@ -273,7 +274,7 @@ def compute_pinn_loss(pinn, pinn_input, pinn_output, target, lambdas, scaling_co
     # compute the loss function
     ################################################################################################################
     # compute the RHS loss
-    if lambda_rhs != 0:
+    if lambdas['RHS'] != 0:
         error_rhs = (rhs_pinn - dxdt) ** 2
         # aplify the error along the second state dimension by multiplying it by 10
         for iState in range(error_rhs.shape[-1]):
@@ -291,7 +292,7 @@ def compute_pinn_loss(pinn, pinn_input, pinn_output, target, lambdas, scaling_co
         loss_rhs = pt.tensor(0, dtype=pt.float32).to(device)
     ################################################################################################################
     # compute the IC loss
-    if lambda_ic != 0:
+    if lambdas['IC'] != 0:
         # if we are starting from 0 at the time domain
         IC_stacked_domain = pinn_input[:, 0, ...].unsqueeze(1)
         state_IC = pinn_output[:, 0, ...]
@@ -301,14 +302,14 @@ def compute_pinn_loss(pinn, pinn_input, pinn_output, target, lambdas, scaling_co
         loss_ic = pt.tensor(0, dtype=pt.float32).to(device)
     ################################################################################################################
     # commpute the data loss w.r.t. the current
-    if lambda_data != 0:
+    if lambdas['Data'] != 0:
         residuals_data = current_pinn - target
         loss_data = pt.sum((residuals_data) ** 2)  # by default, pytorch sum goes over all dimensions
     else:
         loss_data = pt.tensor(0, dtype=pt.float32).to(device)
     ################################################################################################################
     # compute the L1 norm
-    if lambda_l1 != 0:
+    if lambdas['L1'] != 0:
         par_pinn = list(pinn.parameters())
         L1 = pt.tensor([par_pinn[l].abs().sum() for l in range(len(par_pinn))]).sum()
     else:
@@ -317,7 +318,7 @@ def compute_pinn_loss(pinn, pinn_input, pinn_output, target, lambdas, scaling_co
     # #
     #  compute network output penalty (we know that each output must be between 0 and 1)
     target_penalty = pt.tensor(0, dtype=pt.float32).to(device)
-    if lambda_penalty != 0:
+    if lambdas['Penalty'] != 0:
         nOutputs = pinn_output.shape[-1]
         for iOutput in range(nOutputs):
             lower_bound = pt.zeros_like(pinn_output[..., iOutput]).to(device)
@@ -325,8 +326,8 @@ def compute_pinn_loss(pinn, pinn_input, pinn_output, target, lambdas, scaling_co
             target_penalty += pt.sum(pt.relu(lower_bound - pinn_output[..., iOutput])) + pt.sum(
                 pt.relu(pinn_output[..., iOutput] - upper_bound))
     ################################################################################################################
-    combined_loss = lambda_ic * loss_ic + lambda_rhs * loss_rhs + lambda_data * loss_data + lambda_l1 * L1 + lambda_penalty * target_penalty
-    return (combined_loss, loss_rhs, loss_ic, loss_data, L1, target_penalty)
+    combined_loss = lambdas['IC'] * loss_ic + lambdas['RHS'] * loss_rhs + lambdas['Data'] * loss_data + lambdas['L1'] * L1 + lambdas['Penalty'] * target_penalty
+    return (combined_loss, loss_ic, loss_rhs, loss_data, L1, target_penalty)
 
 """
 Below here is the training loop as a function. It is not complete so is not used in the code!
@@ -354,7 +355,7 @@ def train_pinn_loop(pinn, dataloader, optimiser, lambdas, scaling_coeffs, var_na
             optimiser.zero_grad()
             output_batch = pinn(input_batch)
             losses = compute_pinn_loss(input_batch, output_batch, target_batch, lambdas, scaling_coeffs, IC, precomputed_rhs_part, device)
-            loss, loss_rhs, loss_ic, loss_data, L1, target_penalty = losses
+            loss, loss_ic, loss_rhs, loss_data, L1, target_penalty = losses
             ################################################################################################################
             # compute the total loss
             # the backward pass computes the gradient of the loss with respect to the parameters
@@ -368,7 +369,7 @@ def train_pinn_loop(pinn, dataloader, optimiser, lambdas, scaling_coeffs, var_na
             running_data_loss += loss_data.item()
             running_L1_loss += L1.item()
             running_penalty_loss += target_penalty.item()
-            running_losses = [running_IC_loss, running_RHS_loss, running_L1_loss, running_data_loss, running_penalty_loss]
+            running_losses = [running_IC_loss, running_RHS_loss, running_data_loss,running_L1_loss, running_penalty_loss]
         ####################################################################################################################
         # store the loss values
         for iLoss in range(len(all_cost_names)):

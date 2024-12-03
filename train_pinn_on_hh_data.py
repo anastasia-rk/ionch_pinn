@@ -13,8 +13,8 @@ if __name__ == '__main__':
     snr_in_db = 30 # signal to noise ratio in dB for the synthetic data generation
     scaled_domain_size = 10 # size of the domain for the scaled input
     if isATest:
-        nSamples = 20
-        nPerBatch = 10
+        nSamples = 10
+        nPerBatch = 2
         maxIter = 101
         plotEvery = 10
     else:
@@ -29,14 +29,20 @@ if __name__ == '__main__':
     pickleFolder = direcory_names['pickles']
     # create folder for figure storage
     FigFolderName = figureFolder + '/' + model_name.lower() + '_data_' + device.type
-    if not os.path.exists(FigFolderName):
-        os.makedirs(FigFolderName)
     # create the folder for data storage
     ModelFolderName = modelFolder + '/' + model_name.lower() + '_data_' + device.type
-    if not os.path.exists(ModelFolderName):
-        os.makedirs(ModelFolderName)
     #  creat folder for pickles
     PickleFolderName = pickleFolder + '/' + model_name.lower() + '_data_' + device.type
+
+    if isATest:
+        ModelFolderName = ModelFolderName + '_test'
+        FigFolderName = FigFolderName + '_test'
+        PickleFolderName = PickleFolderName + '_test'
+
+    if not os.path.exists(FigFolderName):
+        os.makedirs(FigFolderName)
+    if not os.path.exists(ModelFolderName):
+        os.makedirs(ModelFolderName)
     if not os.path.exists(PickleFolderName):
         os.makedirs(PickleFolderName)
     ####################################################################################################################
@@ -201,7 +207,7 @@ if __name__ == '__main__':
             output_batch = pinn(input_batch)
             losses = compute_pinn_loss(pinn, input_batch, output_batch, target_batch, lambdas,
                                        scaling_coeffs, IC, precomputed_RHS_batch, device)
-            loss, loss_rhs, loss_ic, loss_data, L1, target_penalty = losses
+            loss, loss_ic, loss_rhs, loss_data, L1, target_penalty = losses
             ################################################################################################################
             # compute the total loss
             # the backward pass computes the gradient of the loss with respect to the parameters
@@ -215,7 +221,7 @@ if __name__ == '__main__':
             running_data_loss += loss_data.item()
             running_L1_loss += L1.item()
             running_penalty_loss += target_penalty.item()
-            running_losses = [running_IC_loss, running_RHS_loss, running_L1_loss, running_data_loss, running_penalty_loss]
+            running_losses = [running_IC_loss, running_RHS_loss, running_data_loss, running_L1_loss, running_penalty_loss]
         ####################################################################################################################
         # store the loss values
         for iLoss in range(len(all_cost_names)):

@@ -358,10 +358,8 @@ def plot_layers_as_bases_over_time(pinn, domain, time_domain_unscaled):
 
 def plot_costs(loss_total, stored_costs, lambdas, all_cost_names):
     # plot all the cost functions and the total cost, all in separate axes with shared xaxis
-    # find positive lambdas
-    positive_lambdas = [l for l in lambdas if l > 0]
     # find which costs have positive lambdas
-    active_cost_names = [name for i, name in enumerate(all_cost_names) if lambdas[i] > 0]
+    active_cost_names = [cost_name for cost_name in all_cost_names if lambdas[cost_name] > 0]
     fig_costs, axes = plt.subplots(len(active_cost_names) + 1, 1, figsize=(10, 7), sharex=True, dpi=400)
     axes = axes.ravel()
     axes[0].plot(loss_total)
@@ -369,7 +367,7 @@ def plot_costs(loss_total, stored_costs, lambdas, all_cost_names):
     axes[0].set_ylabel('Total loss')
     axes[0] = pretty_axis(axes[0], legendFlag=False)
     for iCost, cost_name in enumerate(active_cost_names):
-        axes[iCost + 1].plot(stored_costs[cost_name], label='lambda=' + '{:.4E}'.format(positive_lambdas[iCost]),
+        axes[iCost + 1].plot(stored_costs[cost_name], label='lambda=' + '{:.4E}'.format(lambdas[cost_name]),
                              linewidth=1)
         axes[iCost + 1].set_yscale('log')
         axes[iCost + 1].set_ylabel(cost_name)

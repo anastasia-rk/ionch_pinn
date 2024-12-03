@@ -2,18 +2,19 @@ from methods.generate_training_set import *
 from methods.plot_figures import *
 from torch.utils.data import DataLoader, TensorDataset
 import torch.multiprocessing as mp
+
 ########################################################################################################################
 # start the main script
 if __name__ == '__main__':
     isATest = False
     # set the training data
-    model_name = 'kemp' # model we use to generate the synthetic data for data cost
-    rhs_name = 'hh' # the misspecified right hand side model to be used in gradient cost
-    snr_in_db = 30 # signal to noise ratio in dB for the synthetic data generation
-    scaled_domain_size = 10 # size of the domain for the scaled input
+    model_name = 'kemp'  # model we use to generate the synthetic data for data cost
+    rhs_name = 'hh'  # the misspecified right hand side model to be used in gradient cost
+    snr_in_db = 30  # signal to noise ratio in dB for the synthetic data generation
+    scaled_domain_size = 10  # size of the domain for the scaled input
     if isATest:
-        nSamples = 20
-        nPerBatch = 1
+        nSamples = 10
+        nPerBatch = 2
         maxIter = 101
         plotEvery = 10
     else:
@@ -21,21 +22,27 @@ if __name__ == '__main__':
         nPerBatch = 50
         maxIter = 500001
         plotEvery = 20000
-    ####################################################################################################################
+    ######################################################################################################
     # set the folders for figures and pickles
     figureFolder = direcory_names['figures']
     modelFolder = direcory_names['models']
     pickleFolder = direcory_names['pickles']
     # create folder for figure storage
     FigFolderName = figureFolder + '/' + model_name.lower() + '_data_' + device.type
-    if not os.path.exists(FigFolderName):
-        os.makedirs(FigFolderName)
     # create the folder for data storage
     ModelFolderName = modelFolder + '/' + model_name.lower() + '_data_' + device.type
-    if not os.path.exists(ModelFolderName):
-        os.makedirs(ModelFolderName)
     #  creat folder for pickles
     PickleFolderName = pickleFolder + '/' + model_name.lower() + '_data_' + device.type
+
+    if isATest:
+        ModelFolderName = ModelFolderName + '_test'
+        FigFolderName = FigFolderName + '_test'
+        PickleFolderName = PickleFolderName + '_test'
+
+    if not os.path.exists(FigFolderName):
+        os.makedirs(FigFolderName)
+    if not os.path.exists(ModelFolderName):
+        os.makedirs(ModelFolderName)
     if not os.path.exists(PickleFolderName):
         os.makedirs(PickleFolderName)
     ####################################################################################################################
@@ -175,7 +182,7 @@ if __name__ == '__main__':
     ####################3##################################################################################################
     # create a tensor dataset - we must include parts of RHS parameters that are precomputed to split them into appropriate parts
     # note that precomputed_RHS_params is a tuple of tensors - we need to unpack it to send it into the dataloader
-    dataset = TensorDataset(stacked_domain, *precomputed_RHS_params,  measured_current_tensor)
+    dataset = TensorDataset(stacked_domain, *precomputed_RHS_params, measured_current_tensor)
     # if the device we use is cpu, set num_workers to 60, if it is cuda then set them to 0
     num_workers = 0
     if device.type == 'cuda':
@@ -184,7 +191,8 @@ if __name__ == '__main__':
         # have not setup multiprocessing properly, so this does not work yet
         num_workers = min(60, os.cpu_count())
     print(f'Number of workers used:{num_workers}')
-    dataloader = DataLoader(dataset, batch_size=nPerBatch, shuffle=False, num_workers=num_workers, generator=worker_generator)
+    dataloader = DataLoader(dataset, batch_size=nPerBatch, shuffle=False, num_workers=num_workers,
+                            generator=worker_generator)
     # send the IC domain to device
     ########################################################################################################################
     rhs_error_state_weights = [1, 1]
@@ -207,7 +215,7 @@ if __name__ == '__main__':
             output_batch = pinn(input_batch)
             losses = compute_pinn_loss(pinn, input_batch, output_batch, target_batch, lambdas,
                                        scaling_coeffs, IC, precomputed_RHS_batch, device)
-            loss, loss_rhs, loss_ic, loss_data, L1, target_penalty = losses
+            loss, loss_ic, loss_rhs, loss_data, L1, target_penalty = losses
             ################################################################################################################
             # compute the total loss
             # the backward pass computes the gradient of the loss with respect to the parameters
@@ -221,7 +229,8 @@ if __name__ == '__main__':
             running_data_loss += loss_data.item()
             running_L1_loss += L1.item()
             running_penalty_loss += target_penalty.item()
-            running_losses = [running_IC_loss, running_RHS_loss, running_L1_loss, running_data_loss, running_penalty_loss]
+            running_losses = [running_IC_loss, running_RHS_loss, running_data_loss, running_L1_loss,
+                              running_penalty_loss]
         ####################################################################################################################
         # store the loss values
         for iLoss in range(len(all_cost_names)):
