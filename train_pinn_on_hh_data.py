@@ -20,7 +20,7 @@ if __name__ == '__main__':
     else:
         nSamples = 500
         nPerBatch = 50
-        maxIter = 500001
+        maxIter = 60001
         plotEvery = 20000
     ######################################################################################################
     # set the folders for figures and pickles
