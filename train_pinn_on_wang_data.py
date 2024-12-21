@@ -8,7 +8,7 @@ import torch.multiprocessing as mp
 if __name__ == '__main__':
     isATest = False
     # set the training data
-    model_name = 'kemp'  # model we use to generate the synthetic data for data cost
+    model_name = 'wang'  # model we use to generate the synthetic data for data cost
     rhs_name = 'hh'  # the misspecified right hand side model to be used in gradient cost
     snr_in_db = 30  # signal to noise ratio in dB for the synthetic data generation
     scaled_domain_size = 10  # size of the domain for the scaled input
@@ -20,7 +20,7 @@ if __name__ == '__main__':
     else:
         nSamples = 500
         nPerBatch = 50
-        maxIter = 60001
+        maxIter = 500001
         plotEvery = 20000
     ######################################################################################################
     # set the folders for figures and pickles

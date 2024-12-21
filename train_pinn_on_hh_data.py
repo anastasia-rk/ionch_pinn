@@ -360,7 +360,8 @@ if __name__ == '__main__':
     # send the domain to device
     stacked_domain = stacked_domain.to(device)
     # generate output of the trained PINN and current
-    pinn_output = pinn(stacked_domain)
+    with pt.no_grad():
+        pinn_output = pinn(stacked_domain)
     pinn_current = observation_tensors(times, pinn_output, stacked_domain, device)
     pinn_current = pinn_current/param_scaling_coeff
     pinn_output = pinn_output.cpu().detach().numpy()
@@ -411,7 +412,8 @@ if __name__ == '__main__':
         stacked_true = stack_inputs(times_all_domain, thetas_true_tensor)
         # get the true current
         stacked_true = stacked_true.to(device)
-        pinn_output_at_truth = pinn(stacked_true)
+        with pt.no_grad():
+            pinn_output_at_truth = pinn(stacked_true)
         pinn_current_at_truth = observation_tensors(times, pinn_output_at_truth, stacked_true, device)
         pinn_current_at_truth = pinn_current_at_truth / param_scaling_coeff
         pinn_output_at_truth = pinn_output_at_truth.cpu().detach().numpy()
