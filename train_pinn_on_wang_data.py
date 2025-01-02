@@ -20,7 +20,7 @@ if __name__ == '__main__':
     else:
         nSamples = 500
         nPerBatch = 50
-        maxIter = 500001
+        maxIter = 400001
         plotEvery = 20000
     ######################################################################################################
     # set the folders for figures and pickles
@@ -368,6 +368,9 @@ if __name__ == '__main__':
     stacked_domain = stack_inputs(times_all_domain, param_sample.detach())
     # send the domain to device
     stacked_domain = stacked_domain.to(device)
+    # if device name is cuda, flush cache
+    if device.type == 'cuda':
+        pt.cuda.empty_cache()
     # generate output of the trained PINN and current
     with pt.no_grad():
         pinn_output = pinn(stacked_domain)
