@@ -213,7 +213,7 @@ def initialise_optimisation(pinn):
     lambda_ic = 1e-2  # 1e-2 # weight on the gradient fitting cost
     lambda_rhs = 1  # weight on the right hand side fitting cost
     lambda_l1 = 0  # weight on the L1 norm of the parameters
-    lambda_data = 1e-7  # weight on the data fitting cost
+    lambda_data = 1e-9  # weight on the data fitting cost
     lambda_penalty = 1e-3  # weight on the output penalty
     lambdas = [lambda_ic, lambda_rhs, lambda_data, lambda_l1, lambda_penalty]
     # placeholder for storing the costs

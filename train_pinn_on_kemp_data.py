@@ -33,6 +33,8 @@ if __name__ == '__main__':
     ModelFolderName = modelFolder + '/' + model_name.lower() + '_data_' + device.type
     #  creat folder for pickles
     PickleFolderName = pickleFolder + '/' + model_name.lower() + '_data_' + device.type
+    # folder to read the training data from
+    TrainingSetFolderName = modelFolder + '/' + model_name.lower() + '_data'
 
     if isATest:
         ModelFolderName = ModelFolderName + '_test'
@@ -68,18 +70,19 @@ if __name__ == '__main__':
     ####################################################################################################################
     # generate the input sample for training the PINN and generate all necessseary intermediate values for the training
     ArchTestFlag = False
-    training_set_files = [name for name in os.listdir(ModelFolderName) if name.endswith('.npy') and 'train' in name]
+    training_set_files = [name for name in os.listdir(TrainingSetFolderName) if name.endswith('.npy') and 'train' in name]
     if len(training_set_files) > 0:
         #  load stacked domain and measured current from files
-        stacked_domain = pt.tensor(np.load(ModelFolderName + '/stacked_scaled_domain_used_for_training.npy'),
+        stacked_domain = pt.tensor(np.load(TrainingSetFolderName + '/stacked_scaled_domain_used_for_training.npy'),
                                    dtype=pt.float32).requires_grad_(True)
-        stacked_domain_unscaled = pt.tensor(np.load(ModelFolderName + '/stacked_unscaled_domain_used_for_training.npy'),
+        stacked_domain_unscaled = pt.tensor(np.load(TrainingSetFolderName + '/stacked_unscaled_domain_used_for_training.npy'),
                                             dtype=pt.float32).requires_grad_(True)
-        IC_stacked_domain = pt.tensor(np.load(ModelFolderName + '/IC_stacked_domain_used_for_training.npy'),
+        IC_stacked_domain = pt.tensor(np.load(TrainingSetFolderName + '/IC_stacked_domain_used_for_training.npy'),
                                       dtype=pt.float32).requires_grad_(True)
-        pinn_state = pt.tensor(np.load(ModelFolderName + '/true_states_used_for_training_hh_only.npy'),
-                               dtype=pt.float32).requires_grad_(True)
-        measured_current = np.load(ModelFolderName + '/current_data_used_for_training.npy')
+        if model_name.lower() == 'hh':
+            pinn_state = pt.tensor(np.load(TrainingSetFolderName + '/true_states_used_for_training_hh_only.npy'),
+                                   dtype=pt.float32).requires_grad_(True)
+        measured_current = np.load(TrainingSetFolderName + '/current_data_used_for_training.npy')
         measured_current_tensor = pt.tensor(measured_current, dtype=pt.float32).requires_grad_(True)
     else:
         t_domain_unscaled, t_domain, param_sample_unscaled, param_sample, measured_current_tensor, pinn_state = (

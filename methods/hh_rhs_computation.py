@@ -18,10 +18,10 @@ def RHS_tensors(t, x, theta):
     # in this case, we are assuming that the first dimension of the tensor is the time dimension,
     # and all other dimensions correspond to possible parameter values.
     # So, when we create a voltage tensor, that is the same for all parameter values
-    v = pt.tensor(V(t))
+    v = pt.tensor(V(t), dtype=pt.float32)
     # add as many dimensions to the tensor as there are elements in the shape of the state tensor
     for idim in range(len(state_shape)-1):
-        v = v.unsqueeze(-1)
+        v = v.unsqueeze(idim)
     #  now we should be able to expand the original tensor along those dimensions
     v = v.expand(state_shape) # note that this does not allocate new memony, but rather creates a view of the original tensor
     # then we work with the tensors as if they were scalars (I think)
