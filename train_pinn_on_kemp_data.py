@@ -47,6 +47,8 @@ if __name__ == '__main__':
         os.makedirs(ModelFolderName)
     if not os.path.exists(PickleFolderName):
         os.makedirs(PickleFolderName)
+    if not os.path.exists(TrainingSetFolderName):
+        os.makedirs(TrainingSetFolderName)
     ####################################################################################################################
     # set up the colour wheel for plotting output at different training samples - this will be useful for plotting
     colours = plt.cm.PuOr(np.linspace(0, 1, nSamples))
@@ -85,10 +87,9 @@ if __name__ == '__main__':
         measured_current = np.load(TrainingSetFolderName + '/current_data_used_for_training.npy')
         measured_current_tensor = pt.tensor(measured_current, dtype=pt.float32).requires_grad_(True)
     else:
-        t_domain_unscaled, t_domain, param_sample_unscaled, param_sample, measured_current_tensor, pinn_state = (
-            generate_HH_training_set_to_files(unique_times,
+        t_domain_unscaled, t_domain, param_sample_unscaled, param_sample, measured_current_tensor, pinn_state = generate_HH_training_set_to_files(unique_times,
                                               nSamples, model_name=model_name, snr_db=snr_in_db,
-                                              scaled_domain_size=scaled_domain_size))
+                                              scaled_domain_size=scaled_domain_size, modelFolder=TrainingSetFolderName)
         stacked_domain_unscaled = stack_inputs(t_domain_unscaled, param_sample_unscaled)
         stacked_domain = stack_inputs(t_domain, param_sample)
         IC_t_domain = pt.tensor([unique_times[0]], dtype=pt.float32)
