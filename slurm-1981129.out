@@ -1,0 +1,11 @@
+no executable found for command: latex
+Current working directory: /gpfs01/home/sbzak6/projects/ionch_pinn
+Directories:
+{'input_data': '/gpfs01/home/sbzak6/projects/ionch_pinn/protocols', 'models': '/gpfs01/home/sbzak6/projects/ionch_pinn/models', 'output_data': '/gpfs01/home/sbzak6/projects/ionch_pinn/simulated_data', 'figures': '/gpfs01/home/sbzak6/projects/ionch_pinn/figures', 'pickles': '/gpfs01/home/sbzak6/projects/ionch_pinn/pickles', 'tikzes': '/gpfs01/home/sbzak6/projects/ionch_pinn/tikzes'}
+Loaded voltage protocol for model fitting.
+Loaded voltage protocol for validation.
+Traceback (most recent call last):
+  File "/gpfs01/home/sbzak6/projects/ionch_pinn/train_pinn_on_hh_data.py", line 73, in <module>
+    training_set_files = [name for name in os.listdir(TrainingSetFolderName) if name.endswith('.npy') and 'train' in name]
+                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/gpfs01/home/sbzak6/projects/ionch_pinn/models/hh_data'
