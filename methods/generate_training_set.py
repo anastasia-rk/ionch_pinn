@@ -23,7 +23,7 @@ def generate_parameter_sample(nSamples, nParams, lower, upper, rateConstraint=Fa
         raise ValueError('The length of the lower and upper bounds should match the number of parameters.')
     ###############################################################################################################
     # generate the tensor
-    mean = -4
+    mean = -3.5
     std_dev = 5.0
     tensor_sample = pt.distributions.LogNormal(mean, std_dev).sample((nSamples, nParams))
     tensor_bounded_list = []
@@ -110,7 +110,7 @@ def generate_HH_training_set_to_files(unique_times, nSamples, model_name, snr_db
     if not os.path.exists(FigFolderName):
         os.makedirs(FigFolderName)
     # create the folder for data storage
-    ModelFolderName = modelFolder + '/' + model_name.lower() + '_data'
+    ModelFolderName = modelFolder
     if not os.path.exists(ModelFolderName):
         os.makedirs(ModelFolderName)
     ####################################################################################################################
