@@ -81,9 +81,6 @@ if __name__ == '__main__':
                                             dtype=pt.float32).requires_grad_(True)
         IC_stacked_domain = pt.tensor(np.load(TrainingSetFolderName + '/IC_stacked_domain_used_for_training.npy'),
                                       dtype=pt.float32).requires_grad_(True)
-        if model_name.lower() == 'hh':
-            pinn_state = pt.tensor(np.load(TrainingSetFolderName + '/true_states_used_for_training_hh_only.npy'),
-                                   dtype=pt.float32).requires_grad_(True)
         measured_current = np.load(TrainingSetFolderName + '/current_data_used_for_training.npy')
         measured_current_tensor = pt.tensor(measured_current, dtype=pt.float32).requires_grad_(True)
     else:
@@ -105,7 +102,6 @@ if __name__ == '__main__':
     measured_current_tensor = measured_current_tensor.to(device)
     IC_stacked_domain = IC_stacked_domain.to(device)
     IC = IC.to(device)
-    precomputed_RHS_params = RHS_tensors_precompute(unique_times, pinn_state, stacked_domain_unscaled, device)
     ####################################################################################################################
     # set up the neural network
     domain_shape = stacked_domain.shape
@@ -167,6 +163,10 @@ if __name__ == '__main__':
         firstIter = 0
         pinn, lambdas, all_cost_names = initialise_optimisation(pinn)
     ########################################################################################################################
+    # precompute the right hand side of the ODE for the PINN
+    pinn_state = pinn(stacked_domain)
+    precomputed_RHS_params = RHS_tensors_precompute(unique_times, pinn_state, stacked_domain_unscaled, device)
+########################################################################################################################
     ## plots to check the network architecture
     # plot the activation functions of the network as a function of domain
     # fig, axes = plot_layers_as_bases(pinn, t_domain, t_domain)
